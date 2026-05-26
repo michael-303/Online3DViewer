@@ -726,7 +726,7 @@ export class Website
         });
         AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
         let videoPlaying = true;
-        let videoToggleBtn = AddButton (this.toolbar, 'visible', Loc ('Toggle Videos'), ['only_full_width', 'only_on_model'], () => {
+        let videoToggleBtn = AddButton (this.toolbar, 'open', Loc ('Toggle Videos'), ['only_full_width', 'only_on_model'], () => {
             videoPlaying = !videoPlaying;
             if (this.viewer && this.viewer.mainModel && this.viewer.mainModel.mainModel && this.viewer.mainModel.mainModel.rootObject) {
                 let rootObj = this.viewer.mainModel.mainModel.rootObject;
