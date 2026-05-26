@@ -725,6 +725,20 @@ export class Website
             ShowSharingDialog (importer.GetFileList (), this.settings, this.viewer);
         });
         AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
+        let videoPlaying = true;
+        let videoToggleBtn = AddButton (this.toolbar, 'visible', Loc ('Toggle Videos'), ['only_full_width', 'only_on_model'], () => {
+            videoPlaying = !videoPlaying;
+            if (this.viewer && this.viewer.mainModel && this.viewer.mainModel.mainModel && this.viewer.mainModel.mainModel.rootObject) {
+                let rootObj = this.viewer.mainModel.mainModel.rootObject;
+                if (rootObj.userData && rootObj.userData.videos) {
+                    for (let video of rootObj.userData.videos) {
+                        if (videoPlaying) video.play();
+                        else video.pause();
+                    }
+                }
+            }
+        });
+        AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
         AddButton (this.toolbar, 'snapshot', Loc ('Create snapshot'), ['only_full_width', 'only_on_model'], () => {
             ShowSnapshotDialog (this.viewer);
         });

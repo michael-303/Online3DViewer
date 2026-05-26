@@ -4,6 +4,7 @@ import { RevokeObjectUrl } from '../io/bufferutils.js';
 import { MaterialSource } from '../model/material.js';
 import { ConvertModelToThreeObject, ModelToThreeConversionOutput, ModelToThreeConversionParams } from './threeconverter.js';
 import { ConvertColorToThreeColor, HasHighpDriverIssue } from './threeutils.js';
+import { ApplyVideoTextures } from './videoTextureHelper.js';
 
 import * as THREE from 'three';
 
@@ -70,6 +71,7 @@ export class ThreeModelLoader
                             let rotation = new THREE.Quaternion ().setFromAxisAngle (new THREE.Vector3 (1.0, 0.0, 0.0), -Math.PI / 2.0);
                             threeObject.quaternion.multiply (rotation);
                         }
+                        ApplyVideoTextures (threeObject, this.importer, this.objectUrls);
                         callbacks.onModelFinished (importResult, threeObject);
                         this.inProgress = false;
                     }
