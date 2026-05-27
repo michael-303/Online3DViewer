@@ -91,7 +91,8 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 nameToUse = mesh.name;
             }
             if (nameToUse) {
-                videoUrl = mainFileUrl + nameToUse + '.mp4';
+                // To be safe with URL encodings (e.g. Chinese characters)
+                videoUrl = mainFileUrl + encodeURIComponent(nameToUse) + '.mp4';
             }
         }
 
