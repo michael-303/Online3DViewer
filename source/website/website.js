@@ -236,6 +236,11 @@ export class Website
         window.addEventListener ('resize', () => {
 			this.layouter.Resize ();
 		});
+        window.addEventListener ('render_viewer', () => {
+            if (this.viewer) {
+                this.viewer.Render();
+            }
+        });
     }
 
     HasLoadedModel ()
@@ -723,6 +728,47 @@ export class Website
         });
         AddButton (this.toolbar, 'share', Loc ('Share'), ['only_full_width', 'only_on_model'], () => {
             ShowSharingDialog (importer.GetFileList (), this.settings, this.viewer);
+        });
+        AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
+        let videoPlaying = true;
+        let videoMuted = true;
+
+        let updateVideoStates = () => {
+            if (this.viewer && this.viewer.mainModel && this.viewer.mainModel.mainModel && this.viewer.mainModel.mainModel.rootObject) {
+                let rootObj = this.viewer.mainModel.mainModel.rootObject;
+                let allVideos = [];
+                rootObj.traverse((child) => {
+                    if (child.userData && child.userData.videos) {
+                        for (let vid of child.userData.videos) {
+                            if (!allVideos.includes(vid)) allVideos.push(vid);
+                        }
+                    }
+                });
+
+                if (rootObj.userData && rootObj.userData.videos) {
+                    for (let vid of rootObj.userData.videos) {
+                        if (!allVideos.includes(vid)) allVideos.push(vid);
+                    }
+                }
+
+                for (let video of allVideos) {
+                    video.muted = videoMuted;
+                    if (videoPlaying) video.play();
+                    else video.pause();
+                }
+            }
+        };
+
+        let videoToggleBtn = AddButton (this.toolbar, 'open', Loc ('Toggle Video Play/Pause'), ['only_full_width', 'only_on_model'], () => {
+            videoPlaying = !videoPlaying;
+            updateVideoStates();
+            // Optional: You could update the icon here, but keeping it simple for now
+        });
+
+        let videoMuteBtn = AddButton (this.toolbar, 'details', Loc ('Toggle Audio Mute'), ['only_full_width', 'only_on_model'], () => {
+            videoMuted = !videoMuted;
+            updateVideoStates();
+            // Note: 'details' icon is being used since there's no volume icon available.
         });
         AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
         AddButton (this.toolbar, 'snapshot', Loc ('Create snapshot'), ['only_full_width', 'only_on_model'], () => {
