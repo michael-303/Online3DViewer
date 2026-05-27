@@ -1040,7 +1040,7 @@ export class ImporterGltf extends ImporterBase
             return new Transformation (matrix);
         }
 
-        if (gltfNode.children === undefined && gltfNode.mesh === undefined) {
+        if (gltfNode.children === undefined && gltfNode.mesh === undefined && gltfNode.camera === undefined) {
             return;
         }
 
