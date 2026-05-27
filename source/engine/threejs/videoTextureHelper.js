@@ -34,7 +34,7 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
     threeObject.userData.videos = [];
 
     threeObject.traverse((mesh) => {
-        if (!mesh.isMesh || !mesh.name) return;
+        if (!mesh.isMesh) return;
 
         let videoUrl = null;
 
@@ -48,7 +48,23 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                  nameWithoutExt = videoFileName.substring(0, lastDotIdx);
             }
 
-            if (mesh.name === nameWithoutExt) {
+            let matchByMeshName = (mesh.name === nameWithoutExt);
+            let matchByMatName = false;
+
+            if (!matchByMeshName) {
+                if (Array.isArray(mesh.material)) {
+                    for (let mat of mesh.material) {
+                        if (mat.name === nameWithoutExt) {
+                            matchByMatName = true;
+                            break;
+                        }
+                    }
+                } else if (mesh.material && mesh.material.name === nameWithoutExt) {
+                    matchByMatName = true;
+                }
+            }
+
+            if (matchByMeshName || matchByMatName) {
                 matchingVideoFile = videoFile;
                 break;
             }
@@ -65,8 +81,15 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 objectUrls.push(videoUrl);
             }
         } else if (isRemote && mainFileUrl) {
-            // Fallback: If it's a remote URL load, guess the video URL based on mesh name
-            videoUrl = mainFileUrl + mesh.name + '.mp4';
+            // Fallback: If it's a remote URL load, guess the video URL based on mesh name or material name
+            let nameToUse = mesh.name;
+            if (!nameToUse) {
+                if (Array.isArray(mesh.material) && mesh.material.length > 0) nameToUse = mesh.material[0].name;
+                else if (mesh.material) nameToUse = mesh.material.name;
+            }
+            if (nameToUse) {
+                videoUrl = mainFileUrl + nameToUse + '.mp4';
+            }
         }
 
         if (videoUrl) {
