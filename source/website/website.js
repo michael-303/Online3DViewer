@@ -730,6 +730,7 @@ export class Website
             videoPlaying = !videoPlaying;
             if (this.viewer && this.viewer.mainModel && this.viewer.mainModel.mainModel && this.viewer.mainModel.mainModel.rootObject) {
                 let rootObj = this.viewer.mainModel.mainModel.rootObject;
+                console.log('Toggling videos in root object. userData:', rootObj.userData);
                 if (rootObj.userData && rootObj.userData.videos) {
                     for (let video of rootObj.userData.videos) {
                         if (videoPlaying) video.play();
