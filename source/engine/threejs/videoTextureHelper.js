@@ -142,7 +142,41 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
             if (Array.isArray(mesh.material)) {
                 for (let i = 0; i < mesh.material.length; i++) {
                     // Only apply to the specific material if matched by name, or if we matched by mesh name
-                    if (matchByMeshName || (mesh.material[i].name && mesh.material[i].name === nameWithoutExt)) {
+                    let matNameMatch = false;
+                    let meshNameMatch = false;
+                    let meshNameWithoutExt = null;
+                    if (matchingVideoFile) {
+                        meshNameWithoutExt = GetFileName(matchingVideoFile.name);
+                        let lastDotIdx = meshNameWithoutExt.lastIndexOf('.');
+                        if (lastDotIdx !== -1) {
+                            meshNameWithoutExt = meshNameWithoutExt.substring(0, lastDotIdx);
+                        }
+                        meshNameMatch = (mesh.name === meshNameWithoutExt);
+                        if (mesh.material[i].name && mesh.material[i].name === meshNameWithoutExt) {
+                            matNameMatch = true;
+                        }
+                    } else {
+                        // Decode URL to try and match against fallback URL match
+                        let fallbackNameMatch = null;
+                        if (videoUrl) {
+                            let lastSlash = videoUrl.lastIndexOf('/');
+                            if (lastSlash !== -1) {
+                                let filePart = videoUrl.substring(lastSlash + 1);
+                                let decoded = decodeURIComponent(filePart);
+                                let lastDot = decoded.lastIndexOf('.');
+                                if (lastDot !== -1) {
+                                    fallbackNameMatch = decoded.substring(0, lastDot);
+                                }
+                            }
+                        }
+                        if (fallbackNameMatch) {
+                            meshNameMatch = (mesh.name === fallbackNameMatch);
+                            if (mesh.material[i].name && mesh.material[i].name === fallbackNameMatch) {
+                                matNameMatch = true;
+                            }
+                        }
+                    }
+                    if (meshNameMatch || matNameMatch) {
                         mesh.material[i] = mesh.material[i].clone();
                         mesh.material[i].map = videoTexture;
                         mesh.material[i].color = new THREE.Color(0xffffff);
