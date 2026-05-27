@@ -141,10 +141,13 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
             // Clone materials to prevent replacing other objects sharing this material
             if (Array.isArray(mesh.material)) {
                 for (let i = 0; i < mesh.material.length; i++) {
-                    mesh.material[i] = mesh.material[i].clone();
-                    mesh.material[i].map = videoTexture;
-                    mesh.material[i].color = new THREE.Color(0xffffff);
-                    mesh.material[i].needsUpdate = true;
+                    // Only apply to the specific material if matched by name, or if we matched by mesh name
+                    if (matchByMeshName || (mesh.material[i].name && mesh.material[i].name === nameWithoutExt)) {
+                        mesh.material[i] = mesh.material[i].clone();
+                        mesh.material[i].map = videoTexture;
+                        mesh.material[i].color = new THREE.Color(0xffffff);
+                        mesh.material[i].needsUpdate = true;
+                    }
                 }
             } else if (mesh.material) {
                 mesh.material = mesh.material.clone();
