@@ -236,6 +236,11 @@ export class Website
         window.addEventListener ('resize', () => {
 			this.layouter.Resize ();
 		});
+        window.addEventListener ('render_viewer', () => {
+            if (this.viewer) {
+                this.viewer.Render();
+            }
+        });
     }
 
     HasLoadedModel ()

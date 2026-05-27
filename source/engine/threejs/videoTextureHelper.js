@@ -85,6 +85,8 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
 
             let videoTexture = new THREE.VideoTexture(video);
             videoTexture.colorSpace = THREE.SRGBColorSpace;
+            // Ensure UVs are not stretched incorrectly by mirroring flipY setting
+            videoTexture.flipY = false;
 
             videoTexture.addEventListener('dispose', () => {
                 video.pause();
@@ -92,17 +94,46 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 video.load();
             });
 
+            // Clone materials to prevent replacing other objects sharing this material
             if (Array.isArray(mesh.material)) {
-                for (let mat of mesh.material) {
-                    mat.map = videoTexture;
-                    mat.color = new THREE.Color(0xffffff);
-                    mat.needsUpdate = true;
+                for (let i = 0; i < mesh.material.length; i++) {
+                    mesh.material[i] = mesh.material[i].clone();
+                    mesh.material[i].map = videoTexture;
+                    mesh.material[i].color = new THREE.Color(0xffffff);
+                    mesh.material[i].needsUpdate = true;
                 }
             } else if (mesh.material) {
+                mesh.material = mesh.material.clone();
                 mesh.material.map = videoTexture;
                 mesh.material.color = new THREE.Color(0xffffff);
                 mesh.material.needsUpdate = true;
             }
         }
     });
+
+    // Periodically update the video textures to force a render so it isn't just a static frame
+    // This is because Three.js only renders when the camera moves or explicitly told to
+    let frameUpdate = () => {
+        if (threeObject.userData.videos && threeObject.userData.videos.length > 0) {
+            let needsRender = false;
+            for(let video of threeObject.userData.videos) {
+                if(video.readyState >= video.HAVE_CURRENT_DATA && !video.paused) {
+                    needsRender = true;
+                    break;
+                }
+            }
+            if(needsRender && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('render_viewer'));
+            }
+        }
+        threeObject.userData.videoFrameId = requestAnimationFrame(frameUpdate);
+    };
+    frameUpdate();
+
+    // Clean up
+    let origDispose = threeObject.dispose;
+    threeObject.dispose = function() {
+        if(threeObject.userData.videoFrameId) cancelAnimationFrame(threeObject.userData.videoFrameId);
+        if(origDispose) origDispose.call(this);
+    };
 }
