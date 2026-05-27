@@ -1064,7 +1064,7 @@ export class ImporterGltf extends ImporterBase
             if (gltf.cameras && gltf.cameras.length > cameraIndex) {
                 let gltfCamera = gltf.cameras[cameraIndex];
                 if (gltfCamera.type === 'perspective' && gltfCamera.perspective) {
-                    let matrix = node.GetWorldTransformation ().GetMatrix ();
+                    let matrix = node.GetWorldTransformation ().GetMatrix ().Transpose ();
                     let eye = new Coord3D (0, 0, 0);
                     let target = new Coord3D (0, 0, -1);
                     let up = new Coord3D (0, 1, 0);
