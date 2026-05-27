@@ -14,6 +14,7 @@ import { Node } from '../model/node.js';
 import { Property, PropertyGroup, PropertyType } from '../model/property.js';
 import { Triangle } from '../model/triangle.js';
 import { ImporterBase } from './importerbase.js';
+import { Camera } from '../viewer/camera.js';
 import { Loc, FLoc } from '../core/localization.js';
 import { LoadExternalLibrary } from './importerutils.js';
 
@@ -1054,6 +1055,32 @@ export class ImporterGltf extends ImporterBase
             for (let childIndex of gltfNode.children) {
                 let childGltfNode = gltf.nodes[childIndex];
                 this.ImportNode (gltf, childGltfNode, node);
+            }
+        }
+
+
+        if (gltfNode.camera !== undefined) {
+            let cameraIndex = gltfNode.camera;
+            if (gltf.cameras && gltf.cameras.length > cameraIndex) {
+                let gltfCamera = gltf.cameras[cameraIndex];
+                if (gltfCamera.type === 'perspective' && gltfCamera.perspective) {
+                    let matrix = node.GetWorldTransformation ().GetMatrix ();
+                    let eye = new Coord3D (0, 0, 0);
+                    let target = new Coord3D (0, 0, -1);
+                    let up = new Coord3D (0, 1, 0);
+
+                    let eye4D = matrix.MultiplyVector (new Coord4D (eye.x, eye.y, eye.z, 1.0));
+                    let target4D = matrix.MultiplyVector (new Coord4D (target.x, target.y, target.z, 1.0));
+                    let up4D = matrix.MultiplyVector (new Coord4D (up.x, up.y, up.z, 0.0));
+
+                    let modelCamera = new Camera (
+                        new Coord3D (eye4D.x, eye4D.y, eye4D.z),
+                        new Coord3D (target4D.x, target4D.y, target4D.z),
+                        new Coord3D (up4D.x, up4D.y, up4D.z).Normalize (),
+                        gltfCamera.perspective.yfov * (180.0 / Math.PI)
+                    );
+                    this.model.AddCamera (modelCamera);
+                }
             }
         }
 

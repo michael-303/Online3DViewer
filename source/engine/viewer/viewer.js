@@ -198,6 +198,8 @@ export class Viewer
 
         this.scene = new THREE.Scene ();
         this.mainModel = new ViewerMainModel (this.scene);
+        this.autoTransparencyEnabled = true;
+        this.cameraPositionForTransparency = new THREE.Vector3();
         this.extraModel = new ViewerModel (this.scene);
 
         this.InitNavigation ();
@@ -291,6 +293,83 @@ export class Viewer
         this.cameraValidator.ForceUpdate ();
 
         this.AdjustClippingPlanes ();
+        this.Render ();
+    }
+
+    UpdateAutoTransparency (enabled)
+    {
+        this.autoTransparencyEnabled = enabled;
+        this.ApplyAutoTransparency ();
+    }
+
+    ApplyAutoTransparency ()
+    {
+        if (!this.autoTransparencyEnabled) {
+            this.RestoreTransparency ();
+            return;
+        }
+
+        let navigationCamera = this.navigation.GetCamera ();
+        this.cameraPositionForTransparency.set (navigationCamera.eye.x, navigationCamera.eye.y, navigationCamera.eye.z);
+
+
+        this.mainModel.EnumerateMeshesAndLines ((mesh) => {
+            if (!mesh.isMesh) { return; }
+
+            mesh.geometry.computeBoundingBox ();
+            let bbox = mesh.geometry.boundingBox.clone ();
+            bbox.applyMatrix4 (mesh.matrixWorld);
+
+            bbox.expandByScalar (0.5);
+
+            if (bbox.containsPoint (this.cameraPositionForTransparency)) {
+                this.SetMeshTransparent (mesh, true);
+            } else {
+                this.SetMeshTransparent (mesh, false);
+            }
+        });
+
+        this.Render ();
+    }
+
+    SetMeshTransparent (mesh, transparent)
+    {
+        if (!mesh.userData.originalOpacityData) {
+            mesh.userData.originalOpacityData = [];
+            let materials = Array.isArray (mesh.material) ? mesh.material : [mesh.material];
+            for (let mat of materials) {
+                mesh.userData.originalOpacityData.push ({
+                    transparent: mat.transparent,
+                    opacity: mat.opacity,
+                    depthWrite: mat.depthWrite
+                });
+            }
+        }
+
+        let materials = Array.isArray (mesh.material) ? mesh.material : [mesh.material];
+        for (let i = 0; i < materials.length; i++) {
+            let mat = materials[i];
+            let origData = mesh.userData.originalOpacityData[i];
+
+            if (transparent) {
+                mat.transparent = true;
+                mat.opacity = 0.1;
+                mat.depthWrite = false;
+            } else {
+                mat.transparent = origData.transparent;
+                mat.opacity = origData.opacity;
+                mat.depthWrite = origData.depthWrite;
+            }
+            mat.needsUpdate = true;
+        }
+    }
+
+    RestoreTransparency ()
+    {
+        this.mainModel.EnumerateMeshesAndLines ((mesh) => {
+            if (!mesh.isMesh) { return; }
+            this.SetMeshTransparent (mesh, false);
+        });
         this.Render ();
     }
 
@@ -415,6 +494,10 @@ export class Viewer
         }
 
         this.shadingModel.UpdateByCamera (navigationCamera);
+
+        if (this.autoTransparencyEnabled && this.cameraPositionForTransparency.distanceTo (this.camera.position) > 0.1) {
+            this.ApplyAutoTransparency ();
+        }
         this.renderer.render (this.scene, this.camera);
     }
 

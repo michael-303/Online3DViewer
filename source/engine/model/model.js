@@ -12,6 +12,7 @@ export class Model extends ModelObject3D
         this.root = new Node ();
         this.materials = [];
         this.meshes = [];
+        this.cameras = [];
     }
 
     GetUnit ()
@@ -129,6 +130,21 @@ export class Model extends ModelObject3D
     GetMaterial (index)
     {
         return this.materials[index];
+    }
+
+    AddCamera (camera)
+    {
+        this.cameras.push (camera);
+    }
+
+    GetCameraCount ()
+    {
+        return this.cameras.length;
+    }
+
+    GetCamera (index)
+    {
+        return this.cameras[index];
     }
 
     AddMesh (mesh)

@@ -161,3 +161,15 @@ i[class^="icon-"]:before, i[class*=" icon-"]:before {
 .icon-warning:before {
     content: "\f131";
 }
+
+.icon-camera_switch:before {
+    content: "\f030";
+}
+
+.icon-transparency_on:before {
+    content: "\f06e";
+}
+
+.icon-transparency_off:before {
+    content: "\f070";
+}

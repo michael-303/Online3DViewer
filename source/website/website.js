@@ -288,6 +288,7 @@ export class Website
 
         this.model = null;
         this.viewer.Clear ();
+        this.activeModelCameraIndex = -1;
 
         this.parameters.fileNameDiv.innerHTML = '';
 
@@ -771,6 +772,33 @@ export class Website
             // Note: 'details' icon is being used since there's no volume icon available.
         });
         AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
+
+        AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
+        this.cameraSwitchButton = this.toolbar.AddImageButton ('model', Loc ('Switch Camera'), () => {
+            let cameraCount = this.model ? this.model.GetCameraCount () : 0;
+            if (cameraCount === 0) { return; }
+
+            this.activeModelCameraIndex++;
+            if (this.activeModelCameraIndex >= cameraCount) {
+                this.activeModelCameraIndex = -1;
+                this.viewer.SetNavigationMode (this.cameraSettings.navigationMode);
+                this.FitModelToWindow (true);
+            } else {
+                let modelCamera = this.model.GetCamera (this.activeModelCameraIndex);
+                this.viewer.SetNavigationMode (3);
+                this.viewer.navigation.MoveCamera (modelCamera.Clone (), 30);
+            }
+        });
+
+        this.transparencyToggleButton = this.toolbar.AddImagePushButton ('visible', Loc ('Toggle Auto Transparency'), this.cameraTransparencyEnabled, (isSelected) => {
+            this.cameraTransparencyEnabled = isSelected;
+            this.viewer.UpdateAutoTransparency (this.cameraTransparencyEnabled);
+        });
+        this.transparencyToggleButton.AddClass ('only_full_width');
+        this.transparencyToggleButton.AddClass ('only_on_model');
+        this.cameraSwitchButton.AddClass ('only_full_width');
+        this.cameraSwitchButton.AddClass ('only_on_model');
+
         AddButton (this.toolbar, 'snapshot', Loc ('Create snapshot'), ['only_full_width', 'only_on_model'], () => {
             ShowSnapshotDialog (this.viewer);
         });

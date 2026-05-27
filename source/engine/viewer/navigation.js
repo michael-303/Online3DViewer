@@ -522,7 +522,11 @@ export class Navigation
 		let viewDirection = SubCoord3D (this.camera.center, this.camera.eye).Normalize ();
 		let horizontalDirection = CrossVector3D (viewDirection, this.camera.up).Normalize ();
 
-		if (this.navigationMode === NavigationMode.FixedUpVector) {
+		if (this.navigationMode === NavigationMode.LookAround) {
+			let verticalDirection = CrossVector3D (horizontalDirection, viewDirection).Normalize ();
+			this.camera.center.Rotate (horizontalDirection, radAngleY, this.camera.eye);
+			this.camera.center.Rotate (this.camera.up, radAngleX, this.camera.eye);
+		} else if (this.navigationMode === NavigationMode.FixedUpVector) {
 			let originalAngle = VectorAngle3D (viewDirection, this.camera.up);
 			let newAngle = originalAngle + radAngleY;
 			if (IsGreater (newAngle, 0.0) && IsLower (newAngle, Math.PI)) {
@@ -539,6 +543,9 @@ export class Navigation
 
 	Pan (moveX, moveY)
 	{
+		if (this.navigationMode === NavigationMode.LookAround) {
+			return;
+		}
 		let viewDirection = SubCoord3D (this.camera.center, this.camera.eye).Normalize ();
 		let horizontalDirection = CrossVector3D (viewDirection, this.camera.up).Normalize ();
 		let verticalDirection = CrossVector3D (horizontalDirection, viewDirection).Normalize ();
@@ -552,6 +559,9 @@ export class Navigation
 
 	Zoom (ratio)
 	{
+		if (this.navigationMode === NavigationMode.LookAround) {
+			return;
+		}
 		let direction = SubCoord3D (this.camera.center, this.camera.eye);
 		let distance = direction.Length ();
 		let move = distance * ratio;

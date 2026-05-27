@@ -10,7 +10,9 @@ export const NavigationMode =
     /** Fixed up vector. */
 	FixedUpVector : 1,
     /** Free orbit. */
-	FreeOrbit : 2
+	FreeOrbit : 2,
+    /** Look around (First Person). */
+	LookAround : 3
 };
 
 /**
