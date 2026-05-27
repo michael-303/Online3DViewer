@@ -736,8 +736,25 @@ export class Website
             if (this.viewer && this.viewer.mainModel && this.viewer.mainModel.mainModel && this.viewer.mainModel.mainModel.rootObject) {
                 let rootObj = this.viewer.mainModel.mainModel.rootObject;
                 console.log('Toggling videos in root object. userData:', rootObj.userData);
+
+                // Collect all videos
+                let allVideos = [];
+                rootObj.traverse((child) => {
+                    if (child.userData && child.userData.videos) {
+                        for (let vid of child.userData.videos) {
+                            if (!allVideos.includes(vid)) allVideos.push(vid);
+                        }
+                    }
+                });
+
                 if (rootObj.userData && rootObj.userData.videos) {
-                    for (let video of rootObj.userData.videos) {
+                    for (let vid of rootObj.userData.videos) {
+                        if (!allVideos.includes(vid)) allVideos.push(vid);
+                    }
+                }
+
+                if (allVideos.length > 0) {
+                    for (let video of allVideos) {
                         if (videoPlaying) video.play();
                         else video.pause();
                     }

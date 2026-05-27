@@ -33,6 +33,19 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
     // Attach videos array to object userData for external play/pause access
     threeObject.userData.videos = [];
 
+    // Removed the videoFiles.length > 0 check because the user wants auto-discovery
+    // even if no MP4s were explicitly uploaded.
+    let attemptUrlFallback = (isRemote && mainFileUrl);
+
+    // We only want to try fetching network videos if the user has opted in or if we find a reason to
+    // But since the user specifically requested: "I will provide mp4 videos in the same folder as this glb model... inject dynamic video stream",
+    // We need to fetch it based on mesh name.
+    // However, sending hundreds of 404s for a normal 100-mesh GLB is bad.
+    // Since we don't have an explicit option yet, we'll implement it by making a quick HEAD request
+    // or we just accept that 404s will happen, but we can limit it to 5 failed attempts maybe?
+    let networkFailures = 0;
+    const MAX_NETWORK_FAILURES = 5;
+
     threeObject.traverse((mesh) => {
         if (!mesh.isMesh) return;
 
@@ -80,8 +93,8 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 videoUrl = CreateObjectUrlWithMimeType(matchingVideoFile.data, 'video/mp4');
                 objectUrls.push(videoUrl);
             }
-        } else if (isRemote && mainFileUrl) {
-            // Fallback: If it's a remote URL load, guess the video URL based on mesh name or material name
+        } else if (attemptUrlFallback && networkFailures < MAX_NETWORK_FAILURES) {
+            // Fallback: If it's a remote URL load guess the video URL based on mesh name or material name
             let nameToUse = null;
             if (Array.isArray(mesh.material) && mesh.material.length > 0 && mesh.material[0].name) {
                 nameToUse = mesh.material[0].name;
@@ -125,9 +138,23 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 videoTexture.minFilter = origMap.minFilter;
                 videoTexture.magFilter = origMap.magFilter;
                 videoTexture.generateMipmaps = origMap.generateMipmaps;
+
+                // Fix for mirrored video: flip horizontally by making repeat.x negative
+                // and ensuring wrapping allows repetition.
+                videoTexture.wrapS = THREE.RepeatWrapping;
+                videoTexture.repeat.x *= -1;
+            } else {
+                videoTexture.wrapS = THREE.RepeatWrapping;
+                videoTexture.repeat.x = -1;
             }
 
+            let frameUpdateId = null;
+
             videoTexture.addEventListener('dispose', () => {
+                if (frameUpdateId !== null) {
+                    cancelAnimationFrame(frameUpdateId);
+                    frameUpdateId = null;
+                }
                 video.pause();
                 video.removeAttribute('src');
                 video.load();
@@ -138,8 +165,11 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 const cleanMaterial = (mat) => {
                     mat.map = videoTexture;
                     mat.color = new THREE.Color(0xffffff);
-                    mat.emissive = new THREE.Color(0x000000);
-                    if (mat.emissiveMap) mat.emissiveMap = null;
+
+                    // Fix for darkness: use emissive map to make the video self-illuminating
+                    mat.emissiveMap = videoTexture;
+                    mat.emissive = new THREE.Color(0xffffff);
+
                     if (mat.lightMap) mat.lightMap = null;
                     if (mat.aoMap) mat.aoMap = null;
                     if (mat.bumpMap) mat.bumpMap = null;
@@ -210,6 +240,24 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('render_viewer'));
                 }
+
+                // Start a render loop for this specific video texture to keep the frame updating
+                // To avoid spamming, only trigger if window is defined and viewer actually needs it.
+                // It's the most reliable way since we can't easily hook into viewer's internal render loop from here.
+                let lastTime = 0;
+                let frameUpdate = (time) => {
+                    if(video.readyState >= video.HAVE_CURRENT_DATA && !video.paused) {
+                        // Limit to ~30 FPS for rendering updates to save battery/performance
+                        if (time - lastTime > 33) {
+                            if(typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('render_viewer'));
+                            }
+                            lastTime = time;
+                        }
+                    }
+                    frameUpdateId = requestAnimationFrame(frameUpdate);
+                };
+                frameUpdate(performance.now());
             };
 
             // Only apply the material and add to playback list if the video actually loads successfully
@@ -224,7 +272,10 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
             video.addEventListener('loadeddata', onCanPlay);
 
             video.addEventListener('error', (e) => {
-                console.warn('Video failed to load or not found at:', videoUrl, e);
+                // If it's a fallback url, count it as a network failure
+                if (!matchingVideoFile) {
+                    networkFailures++;
+                }
                 // Do not apply the video texture if it fails to load (prevents black meshes)
             });
 
@@ -233,30 +284,4 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
             });
         }
     });
-
-    // Periodically update the video textures to force a render so it isn't just a static frame
-    // This is because Three.js only renders when the camera moves or explicitly told to
-    let frameUpdate = () => {
-        if (threeObject.userData.videos && threeObject.userData.videos.length > 0) {
-            let needsRender = false;
-            for(let video of threeObject.userData.videos) {
-                if(video.readyState >= video.HAVE_CURRENT_DATA && !video.paused) {
-                    needsRender = true;
-                    break;
-                }
-            }
-            if(needsRender && typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('render_viewer'));
-            }
-        }
-        threeObject.userData.videoFrameId = requestAnimationFrame(frameUpdate);
-    };
-    frameUpdate();
-
-    // Clean up
-    let origDispose = threeObject.dispose;
-    threeObject.dispose = function() {
-        if(threeObject.userData.videoFrameId) cancelAnimationFrame(threeObject.userData.videoFrameId);
-        if(origDispose) origDispose.call(this);
-    };
 }
