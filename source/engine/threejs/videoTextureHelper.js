@@ -168,7 +168,7 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
 
                     // Fix for darkness: use emissive map to make the video self-illuminating
                     mat.emissiveMap = videoTexture;
-                    mat.emissive = new THREE.Color(0xffffff);
+                    mat.emissive = new THREE.Color(0xaaaaaa); // Lowered brightness to prevent over-saturation
 
                     if (mat.lightMap) mat.lightMap = null;
                     if (mat.aoMap) mat.aoMap = null;
