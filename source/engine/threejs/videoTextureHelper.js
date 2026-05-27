@@ -54,12 +54,12 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
             if (!matchByMeshName) {
                 if (Array.isArray(mesh.material)) {
                     for (let mat of mesh.material) {
-                        if (mat.name === nameWithoutExt) {
+                        if (mat.name && mat.name === nameWithoutExt) {
                             matchByMatName = true;
                             break;
                         }
                     }
-                } else if (mesh.material && mesh.material.name === nameWithoutExt) {
+                } else if (mesh.material && mesh.material.name && mesh.material.name === nameWithoutExt) {
                     matchByMatName = true;
                 }
             }
@@ -82,10 +82,13 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
             }
         } else if (isRemote && mainFileUrl) {
             // Fallback: If it's a remote URL load, guess the video URL based on mesh name or material name
-            let nameToUse = mesh.name;
-            if (!nameToUse) {
-                if (Array.isArray(mesh.material) && mesh.material.length > 0) nameToUse = mesh.material[0].name;
-                else if (mesh.material) nameToUse = mesh.material.name;
+            let nameToUse = null;
+            if (Array.isArray(mesh.material) && mesh.material.length > 0 && mesh.material[0].name) {
+                nameToUse = mesh.material[0].name;
+            } else if (mesh.material && mesh.material.name) {
+                nameToUse = mesh.material.name;
+            } else if (mesh.name) {
+                nameToUse = mesh.name;
             }
             if (nameToUse) {
                 videoUrl = mainFileUrl + nameToUse + '.mp4';
@@ -108,8 +111,25 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
 
             let videoTexture = new THREE.VideoTexture(video);
             videoTexture.colorSpace = THREE.SRGBColorSpace;
-            // Ensure UVs are not stretched incorrectly by mirroring flipY setting
             videoTexture.flipY = false;
+
+            // inherit properties from original material map if exists
+            let origMap = null;
+            if (Array.isArray(mesh.material) && mesh.material.length > 0) origMap = mesh.material[0].map;
+            else if (mesh.material) origMap = mesh.material.map;
+
+            if (origMap) {
+                videoTexture.wrapS = origMap.wrapS;
+                videoTexture.wrapT = origMap.wrapT;
+                videoTexture.repeat.copy(origMap.repeat);
+                videoTexture.offset.copy(origMap.offset);
+                videoTexture.rotation = origMap.rotation;
+                videoTexture.center.copy(origMap.center);
+                videoTexture.flipY = origMap.flipY;
+                videoTexture.minFilter = origMap.minFilter;
+                videoTexture.magFilter = origMap.magFilter;
+                videoTexture.generateMipmaps = origMap.generateMipmaps;
+            }
 
             videoTexture.addEventListener('dispose', () => {
                 video.pause();
