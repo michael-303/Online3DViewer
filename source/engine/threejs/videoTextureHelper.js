@@ -104,11 +104,6 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
             video.muted = true;
             video.playsInline = true;
             video.autoplay = true;
-            video.play().catch(e => {
-                console.warn('Video play failed or video not found at:', videoUrl, e);
-            });
-
-            threeObject.userData.videos.push(video);
 
             let videoTexture = new THREE.VideoTexture(video);
             videoTexture.colorSpace = THREE.SRGBColorSpace;
@@ -138,57 +133,104 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 video.load();
             });
 
-            // Clone materials to prevent replacing other objects sharing this material
-            if (Array.isArray(mesh.material)) {
-                for (let i = 0; i < mesh.material.length; i++) {
-                    // Only apply to the specific material if matched by name, or if we matched by mesh name
-                    let matNameMatch = false;
-                    let meshNameMatch = false;
-                    let meshNameWithoutExt = null;
-                    if (matchingVideoFile) {
-                        meshNameWithoutExt = GetFileName(matchingVideoFile.name);
-                        let lastDotIdx = meshNameWithoutExt.lastIndexOf('.');
-                        if (lastDotIdx !== -1) {
-                            meshNameWithoutExt = meshNameWithoutExt.substring(0, lastDotIdx);
-                        }
-                        meshNameMatch = (mesh.name === meshNameWithoutExt);
-                        if (mesh.material[i].name && mesh.material[i].name === meshNameWithoutExt) {
-                            matNameMatch = true;
-                        }
-                    } else {
-                        // Decode URL to try and match against fallback URL match
-                        let fallbackNameMatch = null;
-                        if (videoUrl) {
-                            let lastSlash = videoUrl.lastIndexOf('/');
-                            if (lastSlash !== -1) {
-                                let filePart = videoUrl.substring(lastSlash + 1);
-                                let decoded = decodeURIComponent(filePart);
-                                let lastDot = decoded.lastIndexOf('.');
-                                if (lastDot !== -1) {
-                                    fallbackNameMatch = decoded.substring(0, lastDot);
+            const applyMaterial = () => {
+                // Clone materials to prevent replacing other objects sharing this material
+                const cleanMaterial = (mat) => {
+                    mat.map = videoTexture;
+                    mat.color = new THREE.Color(0xffffff);
+                    mat.emissive = new THREE.Color(0x000000);
+                    if (mat.emissiveMap) mat.emissiveMap = null;
+                    if (mat.lightMap) mat.lightMap = null;
+                    if (mat.aoMap) mat.aoMap = null;
+                    if (mat.bumpMap) mat.bumpMap = null;
+                    if (mat.normalMap) mat.normalMap = null;
+                    if (mat.displacementMap) mat.displacementMap = null;
+                    if (mat.roughnessMap) mat.roughnessMap = null;
+                    if (mat.metalnessMap) mat.metalnessMap = null;
+                    if (mat.alphaMap) mat.alphaMap = null;
+                    if (mat.envMap) mat.envMap = null;
+                    if (mat.clearcoatMap) mat.clearcoatMap = null;
+                    if (mat.clearcoatRoughnessMap) mat.clearcoatRoughnessMap = null;
+                    if (mat.clearcoatNormalMap) mat.clearcoatNormalMap = null;
+
+                    if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+                        mat.metalness = 0.0;
+                        mat.roughness = 1.0;
+                    }
+                    mat.needsUpdate = true;
+                };
+
+                if (Array.isArray(mesh.material)) {
+                    for (let i = 0; i < mesh.material.length; i++) {
+                        // Only apply to the specific material if matched by name, or if we matched by mesh name
+                        let matNameMatch = false;
+                        let meshNameMatch = false;
+                        let meshNameWithoutExt = null;
+                        if (matchingVideoFile) {
+                            meshNameWithoutExt = GetFileName(matchingVideoFile.name);
+                            let lastDotIdx = meshNameWithoutExt.lastIndexOf('.');
+                            if (lastDotIdx !== -1) {
+                                meshNameWithoutExt = meshNameWithoutExt.substring(0, lastDotIdx);
+                            }
+                            meshNameMatch = (mesh.name === meshNameWithoutExt);
+                            if (mesh.material[i].name && mesh.material[i].name === meshNameWithoutExt) {
+                                matNameMatch = true;
+                            }
+                        } else {
+                            // Decode URL to try and match against fallback URL match
+                            let fallbackNameMatch = null;
+                            if (videoUrl) {
+                                let lastSlash = videoUrl.lastIndexOf('/');
+                                if (lastSlash !== -1) {
+                                    let filePart = videoUrl.substring(lastSlash + 1);
+                                    let decoded = decodeURIComponent(filePart);
+                                    let lastDot = decoded.lastIndexOf('.');
+                                    if (lastDot !== -1) {
+                                        fallbackNameMatch = decoded.substring(0, lastDot);
+                                    }
+                                }
+                            }
+                            if (fallbackNameMatch) {
+                                meshNameMatch = (mesh.name === fallbackNameMatch);
+                                if (mesh.material[i].name && mesh.material[i].name === fallbackNameMatch) {
+                                    matNameMatch = true;
                                 }
                             }
                         }
-                        if (fallbackNameMatch) {
-                            meshNameMatch = (mesh.name === fallbackNameMatch);
-                            if (mesh.material[i].name && mesh.material[i].name === fallbackNameMatch) {
-                                matNameMatch = true;
-                            }
+                        if (meshNameMatch || matNameMatch) {
+                            mesh.material[i] = mesh.material[i].clone();
+                            cleanMaterial(mesh.material[i]);
                         }
                     }
-                    if (meshNameMatch || matNameMatch) {
-                        mesh.material[i] = mesh.material[i].clone();
-                        mesh.material[i].map = videoTexture;
-                        mesh.material[i].color = new THREE.Color(0xffffff);
-                        mesh.material[i].needsUpdate = true;
-                    }
+                } else if (mesh.material) {
+                    mesh.material = mesh.material.clone();
+                    cleanMaterial(mesh.material);
                 }
-            } else if (mesh.material) {
-                mesh.material = mesh.material.clone();
-                mesh.material.map = videoTexture;
-                mesh.material.color = new THREE.Color(0xffffff);
-                mesh.material.needsUpdate = true;
-            }
+
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('render_viewer'));
+                }
+            };
+
+            // Only apply the material and add to playback list if the video actually loads successfully
+            const onCanPlay = () => {
+                video.removeEventListener('canplay', onCanPlay);
+                video.removeEventListener('loadeddata', onCanPlay);
+                applyMaterial();
+                threeObject.userData.videos.push(video);
+            };
+
+            video.addEventListener('canplay', onCanPlay);
+            video.addEventListener('loadeddata', onCanPlay);
+
+            video.addEventListener('error', (e) => {
+                console.warn('Video failed to load or not found at:', videoUrl, e);
+                // Do not apply the video texture if it fails to load (prevents black meshes)
+            });
+
+            video.play().catch(e => {
+                console.warn('Video play failed:', videoUrl, e);
+            });
         }
     });
 
