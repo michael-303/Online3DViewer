@@ -774,30 +774,30 @@ export class Website
         AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
 
         AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
-        this.cameraSwitchButton = this.toolbar.AddImageButton ('model', Loc ('Switch Camera'), () => {
+
+        this.cameraSwitchButton = this.toolbar.AddImageButton ('model', Loc ('Switch Model Camera'), () => {
             let cameraCount = this.model ? this.model.GetCameraCount () : 0;
             if (cameraCount === 0) { return; }
 
             this.activeModelCameraIndex++;
             if (this.activeModelCameraIndex >= cameraCount) {
-                this.activeModelCameraIndex = -1;
-                this.viewer.SetNavigationMode (this.cameraSettings.navigationMode);
-                this.FitModelToWindow (true);
-            } else {
-                let modelCamera = this.model.GetCamera (this.activeModelCameraIndex);
-                this.viewer.SetNavigationMode (3);
-                this.viewer.navigation.MoveCamera (modelCamera.Clone (), 30);
+                this.activeModelCameraIndex = 0;
             }
+            let modelCamera = this.model.GetCamera (this.activeModelCameraIndex);
+            this.viewer.SetNavigationMode (3);
+            this.viewer.navigation.MoveCamera (modelCamera.Clone (), 30);
         });
 
-        this.transparencyToggleButton = this.toolbar.AddImagePushButton ('visible', Loc ('Toggle Auto Transparency'), this.cameraTransparencyEnabled, (isSelected) => {
-            this.cameraTransparencyEnabled = isSelected;
-            this.viewer.UpdateAutoTransparency (this.cameraTransparencyEnabled);
+        this.cameraResetButton = this.toolbar.AddImageButton ('camera_perspective', Loc ('Free Camera'), () => {
+            this.activeModelCameraIndex = -1;
+            this.viewer.SetNavigationMode (this.cameraSettings.navigationMode);
+            this.FitModelToWindow (true);
         });
-        this.transparencyToggleButton.AddClass ('only_full_width');
-        this.transparencyToggleButton.AddClass ('only_on_model');
+
         this.cameraSwitchButton.AddClass ('only_full_width');
         this.cameraSwitchButton.AddClass ('only_on_model');
+        this.cameraResetButton.AddClass ('only_full_width');
+        this.cameraResetButton.AddClass ('only_on_model');
 
         AddButton (this.toolbar, 'snapshot', Loc ('Create snapshot'), ['only_full_width', 'only_on_model'], () => {
             ShowSnapshotDialog (this.viewer);

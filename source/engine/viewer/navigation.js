@@ -348,6 +348,7 @@ export class Navigation
 		}
 
 		let fitCamera = this.camera.Clone ();
+		fitCamera.fov = 45.0;
 
 		let offsetToOrigo = SubCoord3D (fitCamera.center, center);
 		fitCamera.eye = SubCoord3D (fitCamera.eye, offsetToOrigo);
