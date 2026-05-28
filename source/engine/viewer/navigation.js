@@ -355,6 +355,13 @@ export class Navigation
 		fitCamera.center = center.Clone ();
 
 		let centerEyeDirection = SubCoord3D (fitCamera.eye, fitCamera.center).Normalize ();
+
+		// If the camera is currently looking straight down or straight up due to an imported camera orientation,
+		// it might be broken for the standard orbit. We can enforce a default orientation if we're resetting.
+		// A better approach is provided in UpVector.SetDirection, but we can do a simpler reset here:
+		// Actually, the viewer already has viewer.SetUpVector(Direction.Y, true) for standard reset.
+		// Wait, FitSphereToWindow is not supposed to change the angle, just fit the distance.
+		// If the user wants the "default perspective", the viewer has GetDefaultCamera.
 		let fieldOfView = this.camera.fov / 2.0;
 		if (this.canvas.width < this.canvas.height) {
 			fieldOfView = fieldOfView * this.canvas.width / this.canvas.height;

@@ -3,6 +3,7 @@ import { InputFilesFromFileObjects, InputFilesFromUrls } from '../engine/import/
 import { ImportErrorCode, ImportSettings } from '../engine/import/importer.js';
 import { NavigationMode, ProjectionMode } from '../engine/viewer/camera.js';
 import { RGBColor } from '../engine/model/color.js';
+import { Coord3D, CoordDistance3D } from '../engine/geometry/coord3d.js';
 import { Viewer } from '../engine/viewer/viewer.js';
 import { AddDomElement, ShowDomElement, SetDomElementOuterHeight, CreateDomElement, GetDomElementOuterWidth } from '../engine/viewer/domutils.js';
 import { CalculatePopupPositionToScreen, ShowListPopup } from './dialogs.js';
@@ -791,7 +792,21 @@ export class Website
         this.cameraResetButton = this.toolbar.AddImageButton ('camera_perspective', Loc ('Free Camera'), () => {
             this.activeModelCameraIndex = -1;
             this.viewer.SetNavigationMode (this.cameraSettings.navigationMode);
-            this.FitModelToWindow (true);
+            // In order to properly transition back to default camera,
+            // we generate the fit sphere camera and tween back to it.
+            let boundingSphere = this.viewer.GetBoundingSphere ((meshUserData) => {
+                return this.navigator.IsMeshVisible (meshUserData.originalMeshInstance.id);
+            });
+            let center = new Coord3D (boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z);
+            let newCamera = this.viewer.navigation.GetFitToSphereCamera (center, boundingSphere.radius);
+            // Before moving, ensure up vector is Y
+            newCamera.up = new Coord3D(0, 1, 0);
+            // Set up a default eye distance that looks down on the model
+            let defaultDir = new Coord3D(-1.5, 2.0, 3.0).Normalize();
+            let distance = CoordDistance3D(newCamera.center, newCamera.eye);
+            newCamera.eye = newCamera.center.Clone().Offset(defaultDir, distance);
+
+            this.viewer.navigation.MoveCamera (newCamera, this.viewer.settings.animationSteps);
         });
 
         this.cameraSwitchButton.AddClass ('only_full_width');
