@@ -1,7 +1,7 @@
 import { Coord2D, CoordDistance2D, SubCoord2D } from '../geometry/coord2d.js';
 import { CoordDistance3D, CrossVector3D, SubCoord3D, VectorAngle3D } from '../geometry/coord3d.js';
 import { DegRad, IsGreater, IsLower, IsZero } from '../geometry/geometry.js';
-import { ParabolicTweenFunction, TweenCoord3D } from '../geometry/tween.js';
+import { ParabolicTweenFunction, TweenCoord3D, TweenNumber } from '../geometry/tween.js';
 import { CameraIsEqual3D, NavigationMode } from './camera.js';
 import { GetDomElementClientCoordinates } from './domutils.js';
 
@@ -309,6 +309,7 @@ export class Navigation
 			obj.camera.eye = steps.eye[index];
 			obj.camera.center = steps.center[index];
 			obj.camera.up = steps.up[index];
+			obj.camera.fov = steps.fov[index];
 			obj.Update ();
 
 			if (index < count - 1) {
@@ -329,7 +330,8 @@ export class Navigation
 			let steps = {
 				eye : TweenCoord3D (this.camera.eye, newCamera.eye, stepCount, tweenFunc),
 				center : TweenCoord3D (this.camera.center, newCamera.center, stepCount, tweenFunc),
-				up : TweenCoord3D (this.camera.up, newCamera.up, stepCount, tweenFunc)
+				up : TweenCoord3D (this.camera.up, newCamera.up, stepCount, tweenFunc),
+				fov : TweenNumber (this.camera.fov, newCamera.fov, stepCount, tweenFunc)
 			};
 			requestAnimationFrame (() => {
 				Step (this, steps, stepCount, 0);
@@ -346,12 +348,20 @@ export class Navigation
 		}
 
 		let fitCamera = this.camera.Clone ();
+		fitCamera.fov = 45.0;
 
 		let offsetToOrigo = SubCoord3D (fitCamera.center, center);
 		fitCamera.eye = SubCoord3D (fitCamera.eye, offsetToOrigo);
 		fitCamera.center = center.Clone ();
 
 		let centerEyeDirection = SubCoord3D (fitCamera.eye, fitCamera.center).Normalize ();
+
+		// If the camera is currently looking straight down or straight up due to an imported camera orientation,
+		// it might be broken for the standard orbit. We can enforce a default orientation if we're resetting.
+		// A better approach is provided in UpVector.SetDirection, but we can do a simpler reset here:
+		// Actually, the viewer already has viewer.SetUpVector(Direction.Y, true) for standard reset.
+		// Wait, FitSphereToWindow is not supposed to change the angle, just fit the distance.
+		// If the user wants the "default perspective", the viewer has GetDefaultCamera.
 		let fieldOfView = this.camera.fov / 2.0;
 		if (this.canvas.width < this.canvas.height) {
 			fieldOfView = fieldOfView * this.canvas.width / this.canvas.height;
@@ -522,7 +532,11 @@ export class Navigation
 		let viewDirection = SubCoord3D (this.camera.center, this.camera.eye).Normalize ();
 		let horizontalDirection = CrossVector3D (viewDirection, this.camera.up).Normalize ();
 
-		if (this.navigationMode === NavigationMode.FixedUpVector) {
+		if (this.navigationMode === NavigationMode.LookAround) {
+			let verticalDirection = CrossVector3D (horizontalDirection, viewDirection).Normalize ();
+			this.camera.center.Rotate (horizontalDirection, radAngleY, this.camera.eye);
+			this.camera.center.Rotate (this.camera.up, radAngleX, this.camera.eye);
+		} else if (this.navigationMode === NavigationMode.FixedUpVector) {
 			let originalAngle = VectorAngle3D (viewDirection, this.camera.up);
 			let newAngle = originalAngle + radAngleY;
 			if (IsGreater (newAngle, 0.0) && IsLower (newAngle, Math.PI)) {
@@ -539,6 +553,9 @@ export class Navigation
 
 	Pan (moveX, moveY)
 	{
+		if (this.navigationMode === NavigationMode.LookAround) {
+			return;
+		}
 		let viewDirection = SubCoord3D (this.camera.center, this.camera.eye).Normalize ();
 		let horizontalDirection = CrossVector3D (viewDirection, this.camera.up).Normalize ();
 		let verticalDirection = CrossVector3D (horizontalDirection, viewDirection).Normalize ();
@@ -552,6 +569,9 @@ export class Navigation
 
 	Zoom (ratio)
 	{
+		if (this.navigationMode === NavigationMode.LookAround) {
+			return;
+		}
 		let direction = SubCoord3D (this.camera.center, this.camera.eye);
 		let distance = direction.Length ();
 		let move = distance * ratio;

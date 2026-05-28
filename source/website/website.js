@@ -3,8 +3,9 @@ import { InputFilesFromFileObjects, InputFilesFromUrls } from '../engine/import/
 import { ImportErrorCode, ImportSettings } from '../engine/import/importer.js';
 import { NavigationMode, ProjectionMode } from '../engine/viewer/camera.js';
 import { RGBColor } from '../engine/model/color.js';
+import { Coord3D, CoordDistance3D } from '../engine/geometry/coord3d.js';
 import { Viewer } from '../engine/viewer/viewer.js';
-import { AddDiv, AddDomElement, ShowDomElement, SetDomElementOuterHeight, CreateDomElement, GetDomElementOuterWidth } from '../engine/viewer/domutils.js';
+import { AddDomElement, ShowDomElement, SetDomElementOuterHeight, CreateDomElement, GetDomElementOuterWidth } from '../engine/viewer/domutils.js';
 import { CalculatePopupPositionToScreen, ShowListPopup } from './dialogs.js';
 import { HandleEvent } from './eventhandler.js';
 import { HashHandler } from './hashhandler.js';
@@ -221,7 +222,7 @@ export class Website
         this.InitDragAndDrop ();
         this.InitSidebar ();
         this.InitNavigator ();
-        this.InitCookieConsent ();
+        // this.InitCookieConsent ();
 
         this.viewer.SetMouseClickHandler (this.OnModelClicked.bind (this));
         this.viewer.SetMouseMoveHandler (this.OnModelMouseMoved.bind (this));
@@ -288,6 +289,7 @@ export class Website
 
         this.model = null;
         this.viewer.Clear ();
+        this.activeModelCameraIndex = -1;
 
         this.parameters.fileNameDiv.innerHTML = '';
 
@@ -771,6 +773,47 @@ export class Website
             // Note: 'details' icon is being used since there's no volume icon available.
         });
         AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
+
+        AddSeparator (this.toolbar, ['only_full_width', 'only_on_model']);
+
+        this.cameraSwitchButton = this.toolbar.AddImageButton ('model', Loc ('Switch Model Camera'), () => {
+            let cameraCount = this.model ? this.model.GetCameraCount () : 0;
+            if (cameraCount === 0) { return; }
+
+            this.activeModelCameraIndex++;
+            if (this.activeModelCameraIndex >= cameraCount) {
+                this.activeModelCameraIndex = 0;
+            }
+            let modelCamera = this.model.GetCamera (this.activeModelCameraIndex);
+            this.viewer.SetNavigationMode (3);
+            this.viewer.navigation.MoveCamera (modelCamera.Clone (), 30);
+        });
+
+        this.cameraResetButton = this.toolbar.AddImageButton ('camera_perspective', Loc ('Free Camera'), () => {
+            this.activeModelCameraIndex = -1;
+            this.viewer.SetNavigationMode (this.cameraSettings.navigationMode);
+            // In order to properly transition back to default camera,
+            // we generate the fit sphere camera and tween back to it.
+            let boundingSphere = this.viewer.GetBoundingSphere ((meshUserData) => {
+                return this.navigator.IsMeshVisible (meshUserData.originalMeshInstance.id);
+            });
+            let center = new Coord3D (boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z);
+            let newCamera = this.viewer.navigation.GetFitToSphereCamera (center, boundingSphere.radius);
+            // Before moving, ensure up vector is Y
+            newCamera.up = new Coord3D(0, 1, 0);
+            // Set up a default eye distance that looks down on the model
+            let defaultDir = new Coord3D(-1.5, 2.0, 3.0).Normalize();
+            let distance = CoordDistance3D(newCamera.center, newCamera.eye);
+            newCamera.eye = newCamera.center.Clone().Offset(defaultDir, distance);
+
+            this.viewer.navigation.MoveCamera (newCamera, this.viewer.settings.animationSteps);
+        });
+
+        this.cameraSwitchButton.AddClass ('only_full_width');
+        this.cameraSwitchButton.AddClass ('only_on_model');
+        this.cameraResetButton.AddClass ('only_full_width');
+        this.cameraResetButton.AddClass ('only_on_model');
+
         AddButton (this.toolbar, 'snapshot', Loc ('Create snapshot'), ['only_full_width', 'only_on_model'], () => {
             ShowSnapshotDialog (this.viewer);
         });
@@ -1003,20 +1046,5 @@ export class Website
         return buttonLink;
     }
 
-    InitCookieConsent ()
-    {
-        let accepted = CookieGetBoolVal ('ov_cookie_consent', false);
-        if (accepted) {
-            return;
-        }
 
-        let text = Loc ('This website uses cookies to offer you better user experience. See the details at the <a target="_blank" href="info/cookies.html">Cookies Policy</a> page.');
-        let popupDiv = AddDiv (document.body, 'ov_bottom_floating_panel');
-        AddDiv (popupDiv, 'ov_floating_panel_text', text);
-        let acceptButton = AddDiv (popupDiv, 'ov_button ov_floating_panel_button', Loc ('Accept'));
-        acceptButton.addEventListener ('click', () => {
-            CookieSetBoolVal ('ov_cookie_consent', true);
-            popupDiv.remove ();
-        });
-    }
 }

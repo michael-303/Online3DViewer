@@ -94,18 +94,37 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 objectUrls.push(videoUrl);
             }
         } else if (attemptUrlFallback && networkFailures < MAX_NETWORK_FAILURES) {
-            // Fallback: If it's a remote URL load guess the video URL based on mesh name or material name
+            // Naming convention:
+            // - Ends with '_video' -> request .mp4
+            // - Ends with '_videoa' (or '_videoA') -> request .webm, and make material transparent
             let nameToUse = null;
-            if (Array.isArray(mesh.material) && mesh.material.length > 0 && mesh.material[0].name) {
-                nameToUse = mesh.material[0].name;
-            } else if (mesh.material && mesh.material.name) {
-                nameToUse = mesh.material.name;
-            } else if (mesh.name) {
-                nameToUse = mesh.name;
-            }
+            let matName = (Array.isArray(mesh.material) && mesh.material.length > 0) ? mesh.material[0].name : (mesh.material ? mesh.material.name : null);
+            let meshName = mesh.name;
+
+            let isTransparentVideo = false;
+
+            let checkName = (name) => {
+                if (!name) return false;
+                let lowerName = name.toLowerCase();
+                if (lowerName.endsWith('_videoa')) {
+                    isTransparentVideo = true;
+                    nameToUse = name;
+                    return true;
+                } else if (lowerName.endsWith('_video')) {
+                    isTransparentVideo = false;
+                    nameToUse = name;
+                    return true;
+                }
+                return false;
+            };
+
+            checkName(matName) || checkName(meshName);
+
             if (nameToUse) {
                 // To be safe with URL encodings (e.g. Chinese characters)
-                videoUrl = mainFileUrl + encodeURIComponent(nameToUse) + '.mp4';
+                let ext = isTransparentVideo ? '.webm' : '.mp4';
+                videoUrl = mainFileUrl + encodeURIComponent(nameToUse) + ext;
+                mesh.userData.isVideoTransparent = isTransparentVideo;
             }
         }
 
@@ -169,6 +188,11 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                     // Fix for darkness: use emissive map to make the video self-illuminating
                     mat.emissiveMap = videoTexture;
                     mat.emissive = new THREE.Color(0xaaaaaa); // Lowered brightness to prevent over-saturation
+
+                    if (mesh.userData.isVideoTransparent) {
+                        mat.transparent = true;
+                        mat.alphaMap = videoTexture;
+                    }
 
                     if (mat.lightMap) mat.lightMap = null;
                     if (mat.aoMap) mat.aoMap = null;

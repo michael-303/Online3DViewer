@@ -14,6 +14,7 @@ import { Node } from '../model/node.js';
 import { Property, PropertyGroup, PropertyType } from '../model/property.js';
 import { Triangle } from '../model/triangle.js';
 import { ImporterBase } from './importerbase.js';
+import { Camera } from '../viewer/camera.js';
 import { Loc, FLoc } from '../core/localization.js';
 import { LoadExternalLibrary } from './importerutils.js';
 
@@ -1039,7 +1040,7 @@ export class ImporterGltf extends ImporterBase
             return new Transformation (matrix);
         }
 
-        if (gltfNode.children === undefined && gltfNode.mesh === undefined) {
+        if (gltfNode.children === undefined && gltfNode.mesh === undefined && gltfNode.camera === undefined) {
             return;
         }
 
@@ -1054,6 +1055,39 @@ export class ImporterGltf extends ImporterBase
             for (let childIndex of gltfNode.children) {
                 let childGltfNode = gltf.nodes[childIndex];
                 this.ImportNode (gltf, childGltfNode, node);
+            }
+        }
+
+
+        if (gltfNode.camera !== undefined) {
+            let cameraIndex = gltfNode.camera;
+            if (gltf.cameras && gltf.cameras.length > cameraIndex) {
+                let gltfCamera = gltf.cameras[cameraIndex];
+                if (gltfCamera.type === 'perspective' && gltfCamera.perspective) {
+                    let transform = node.GetWorldTransformation ();
+                    let eye = new Coord3D (0.0, 0.0, 0.0);
+                    let target = new Coord3D (0.0, 0.0, -1.0);
+                    let up = new Coord3D (0.0, 1.0, 0.0);
+
+                    let transformedEye = transform.TransformCoord3D (eye);
+                    let transformedTarget = transform.TransformCoord3D (target);
+
+                    // For direction vectors, we calculate the transformed point and subtract the transformed origin
+                    let transformedUpPoint = transform.TransformCoord3D (up);
+                    let transformedUp = new Coord3D (
+                        transformedUpPoint.x - transformedEye.x,
+                        transformedUpPoint.y - transformedEye.y,
+                        transformedUpPoint.z - transformedEye.z
+                    );
+
+                    let modelCamera = new Camera (
+                        transformedEye,
+                        transformedTarget,
+                        transformedUp.Normalize (),
+                        gltfCamera.perspective.yfov * (180.0 / Math.PI)
+                    );
+                    this.model.AddCamera (modelCamera);
+                }
             }
         }
 
