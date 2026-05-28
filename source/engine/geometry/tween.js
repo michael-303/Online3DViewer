@@ -34,8 +34,9 @@ export function TweenNumber (a, b, count, tweenFunc)
 {
     let result = [];
     for (let i = 0; i < count; i++) {
-        let t = i / (count - 1);
-        let val = a + (b - a) * tweenFunc (t);
+        let distance = b - a;
+        let step = tweenFunc (distance, i, count - 1);
+        let val = a + step;
         result.push (val);
     }
     return result;
