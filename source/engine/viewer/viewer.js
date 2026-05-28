@@ -198,7 +198,7 @@ export class Viewer
 
         this.scene = new THREE.Scene ();
         this.mainModel = new ViewerMainModel (this.scene);
-        this.autoTransparencyEnabled = true;
+        this.autoTransparencyEnabled = false;
         this.cameraPositionForTransparency = new THREE.Vector3();
         this.extraModel = new ViewerModel (this.scene);
 
