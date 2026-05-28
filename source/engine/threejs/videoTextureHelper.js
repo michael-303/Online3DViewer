@@ -94,15 +94,17 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 objectUrls.push(videoUrl);
             }
         } else if (attemptUrlFallback && networkFailures < MAX_NETWORK_FAILURES) {
-            // Fallback: If it's a remote URL load guess the video URL based on mesh name or material name
+            // Naming convention: If the mesh or material name ends with '_video', we request it
             let nameToUse = null;
-            if (Array.isArray(mesh.material) && mesh.material.length > 0 && mesh.material[0].name) {
-                nameToUse = mesh.material[0].name;
-            } else if (mesh.material && mesh.material.name) {
-                nameToUse = mesh.material.name;
-            } else if (mesh.name) {
-                nameToUse = mesh.name;
+            let matName = (Array.isArray(mesh.material) && mesh.material.length > 0) ? mesh.material[0].name : (mesh.material ? mesh.material.name : null);
+            let meshName = mesh.name;
+
+            if (matName && matName.toLowerCase().endsWith('_video')) {
+                nameToUse = matName;
+            } else if (meshName && meshName.toLowerCase().endsWith('_video')) {
+                nameToUse = meshName;
             }
+
             if (nameToUse) {
                 // To be safe with URL encodings (e.g. Chinese characters)
                 videoUrl = mainFileUrl + encodeURIComponent(nameToUse) + '.mp4';
