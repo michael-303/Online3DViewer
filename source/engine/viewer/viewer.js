@@ -474,11 +474,10 @@ export class Viewer
         this.camera.lookAt (new THREE.Vector3 (navigationCamera.center.x, navigationCamera.center.y, navigationCamera.center.z));
 
         if (this.projectionMode === ProjectionMode.Perspective) {
-            if (!this.cameraValidator.ValidatePerspective ()) {
-                this.camera.aspect = this.canvas.width / this.canvas.height;
-                this.camera.fov = navigationCamera.fov;
-                this.camera.updateProjectionMatrix ();
-            }
+            // always update aspect and fov because tweening changes fov constantly
+            this.camera.aspect = this.canvas.width / this.canvas.height;
+            this.camera.fov = navigationCamera.fov;
+            this.camera.updateProjectionMatrix ();
         } else if (this.projectionMode === ProjectionMode.Orthographic) {
             let eyeCenterDistance = CoordDistance3D (navigationCamera.eye, navigationCamera.center);
             if (!this.cameraValidator.ValidateOrthographic (eyeCenterDistance)) {
