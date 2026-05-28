@@ -29,3 +29,14 @@ export function TweenCoord3D (a, b, count, tweenFunc)
 	}
 	return result;
 }
+
+export function TweenNumber (a, b, count, tweenFunc)
+{
+    let result = [];
+    for (let i = 0; i < count; i++) {
+        let t = i / (count - 1);
+        let val = a + (b - a) * tweenFunc (t);
+        result.push (val);
+    }
+    return result;
+}

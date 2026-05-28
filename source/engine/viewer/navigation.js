@@ -1,7 +1,7 @@
 import { Coord2D, CoordDistance2D, SubCoord2D } from '../geometry/coord2d.js';
 import { CoordDistance3D, CrossVector3D, SubCoord3D, VectorAngle3D } from '../geometry/coord3d.js';
 import { DegRad, IsGreater, IsLower, IsZero } from '../geometry/geometry.js';
-import { ParabolicTweenFunction, TweenCoord3D } from '../geometry/tween.js';
+import { ParabolicTweenFunction, TweenCoord3D, TweenNumber } from '../geometry/tween.js';
 import { CameraIsEqual3D, NavigationMode } from './camera.js';
 import { GetDomElementClientCoordinates } from './domutils.js';
 
@@ -309,6 +309,7 @@ export class Navigation
 			obj.camera.eye = steps.eye[index];
 			obj.camera.center = steps.center[index];
 			obj.camera.up = steps.up[index];
+			obj.camera.fov = steps.fov[index];
 			obj.Update ();
 
 			if (index < count - 1) {
@@ -329,7 +330,8 @@ export class Navigation
 			let steps = {
 				eye : TweenCoord3D (this.camera.eye, newCamera.eye, stepCount, tweenFunc),
 				center : TweenCoord3D (this.camera.center, newCamera.center, stepCount, tweenFunc),
-				up : TweenCoord3D (this.camera.up, newCamera.up, stepCount, tweenFunc)
+				up : TweenCoord3D (this.camera.up, newCamera.up, stepCount, tweenFunc),
+				fov : TweenNumber (this.camera.fov, newCamera.fov, stepCount, tweenFunc)
 			};
 			requestAnimationFrame (() => {
 				Step (this, steps, stepCount, 0);
