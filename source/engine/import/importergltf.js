@@ -1064,19 +1064,26 @@ export class ImporterGltf extends ImporterBase
             if (gltf.cameras && gltf.cameras.length > cameraIndex) {
                 let gltfCamera = gltf.cameras[cameraIndex];
                 if (gltfCamera.type === 'perspective' && gltfCamera.perspective) {
-                    let matrix = node.GetWorldTransformation ().GetMatrix ().Transpose ();
-                    let eye = new Coord3D (0, 0, 0);
-                    let target = new Coord3D (0, 0, -1);
-                    let up = new Coord3D (0, 1, 0);
+                    let transform = node.GetWorldTransformation ();
+                    let eye = new Coord3D (0.0, 0.0, 0.0);
+                    let target = new Coord3D (0.0, 0.0, -1.0);
+                    let up = new Coord3D (0.0, 1.0, 0.0);
 
-                    let eye4D = matrix.MultiplyVector (new Coord4D (eye.x, eye.y, eye.z, 1.0));
-                    let target4D = matrix.MultiplyVector (new Coord4D (target.x, target.y, target.z, 1.0));
-                    let up4D = matrix.MultiplyVector (new Coord4D (up.x, up.y, up.z, 0.0));
+                    let transformedEye = transform.TransformCoord3D (eye);
+                    let transformedTarget = transform.TransformCoord3D (target);
+
+                    // For direction vectors, we calculate the transformed point and subtract the transformed origin
+                    let transformedUpPoint = transform.TransformCoord3D (up);
+                    let transformedUp = new Coord3D (
+                        transformedUpPoint.x - transformedEye.x,
+                        transformedUpPoint.y - transformedEye.y,
+                        transformedUpPoint.z - transformedEye.z
+                    );
 
                     let modelCamera = new Camera (
-                        new Coord3D (eye4D.x, eye4D.y, eye4D.z),
-                        new Coord3D (target4D.x, target4D.y, target4D.z),
-                        new Coord3D (up4D.x, up4D.y, up4D.z).Normalize (),
+                        transformedEye,
+                        transformedTarget,
+                        transformedUp.Normalize (),
                         gltfCamera.perspective.yfov * (180.0 / Math.PI)
                     );
                     this.model.AddCamera (modelCamera);
