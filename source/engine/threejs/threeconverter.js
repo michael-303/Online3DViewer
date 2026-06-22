@@ -508,5 +508,8 @@ export function ConvertModelToThreeObject (model, conversionParams, conversionOu
 	let stateHandler = new ThreeConversionStateHandler (callbacks);
 	let materialHandler = new ThreeMaterialHandler (model, stateHandler, conversionParams, conversionOutput);
 	let threeObject = new THREE.Object3D ();
+	if (model.animations) {
+		threeObject.animations = model.animations;
+	}
 	ConvertNodeHierarchy (threeObject, model, materialHandler, stateHandler);
 }

@@ -30,7 +30,6 @@ import { ImporterBase } from './import/importerbase.js';
 import { ImporterBim } from './import/importerbim.js';
 import { ImporterFcstd } from './import/importerfcstd.js';
 import { InputFile, ImporterFile, ImporterFileList, InputFilesFromUrls, InputFilesFromFileObjects } from './import/importerfiles.js';
-import { ImporterGltf } from './import/importergltf.js';
 import { ImporterIfc } from './import/importerifc.js';
 import { ImporterObj } from './import/importerobj.js';
 import { ImporterOcct } from './import/importerocct.js';
@@ -38,7 +37,7 @@ import { ImporterOff } from './import/importeroff.js';
 import { ImporterPly } from './import/importerply.js';
 import { ImporterStl } from './import/importerstl.js';
 import { ImporterThreeSvg } from './import/importersvg.js';
-import { ImporterThreeBase, ImporterThreeFbx, ImporterThreeDae, ImporterThreeWrl, ImporterThree3mf, ImporterThreeAmf } from './import/importerthree.js';
+import { ImporterThreeBase, ImporterThreeFbx, ImporterThreeDae, ImporterThreeWrl, ImporterThree3mf, ImporterThreeAmf, ImporterThreeGltf } from './import/importerthree.js';
 import { ColorToMaterialConverter, NameFromLine, ParametersFromLine, ReadLines, IsPowerOfTwo, NextPowerOfTwo, UpdateMaterialTransparency, CreateOcctWorker, LoadExternalLibrary } from './import/importerutils.js';
 import { BinaryReader } from './io/binaryreader.js';
 import { BinaryWriter } from './io/binarywriter.js';
@@ -174,7 +173,6 @@ export {
     ImporterFileList,
     InputFilesFromUrls,
     InputFilesFromFileObjects,
-    ImporterGltf,
     ImporterIfc,
     ImporterObj,
     ImporterOcct,
@@ -188,6 +186,7 @@ export {
     ImporterThreeWrl,
     ImporterThree3mf,
     ImporterThreeAmf,
+    ImporterThreeGltf,
     ColorToMaterialConverter,
     NameFromLine,
     ParametersFromLine,

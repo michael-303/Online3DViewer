@@ -169,6 +169,10 @@ export class Viewer
         this.camera = null;
         this.projectionMode = null;
         this.cameraValidator = null;
+        this.mixer = null;
+        this.clock = new THREE.Clock();
+        this.animationMixers = [];
+        this.animationRequestId = null;
         this.shadingModel = null;
         this.navigation = null;
         this.upVector = null;
@@ -204,8 +208,40 @@ export class Viewer
 
         this.InitNavigation ();
         this.InitShading ();
+    }
 
-        this.Render ();
+    PlayAnimation () {
+        if (this.mixer) {
+            this.mixer.timeScale = 1;
+            this.clock.getDelta(); // reset clock delta
+        }
+    }
+
+    PauseAnimation () {
+        if (this.mixer) {
+            this.mixer.timeScale = 0;
+        }
+    }
+
+    SetAnimationTime (time) {
+        if (this.mixer) {
+            this.mixer.setTime(time);
+            this.Render();
+        }
+    }
+
+    GetAnimationDuration () {
+        if (this.mixer && this.mixer._actions.length > 0) {
+            return this.mixer._actions[0].getClip().duration;
+        }
+        return 0;
+    }
+
+    GetAnimationTime () {
+        if (this.mixer) {
+            return this.mixer.time;
+        }
+        return 0;
     }
 
     SetMouseClickHandler (onMouseClick)
@@ -504,6 +540,26 @@ export class Viewer
     {
         const shadingType = GetShadingTypeOfObject (object);
         this.mainModel.SetMainObject (object);
+
+        if (object.animations && object.animations.length > 0) {
+            this.mixer = new THREE.AnimationMixer(object);
+            for (let clip of object.animations) {
+                this.mixer.clipAction(clip).play();
+            }
+            this.animationMixers.push(this.mixer);
+            if (typeof window !== 'undefined') {
+                // Create a loop to update mixer
+                const updateMixer = () => {
+                    if (this.mixer) {
+                        this.mixer.update(this.clock.getDelta());
+                        window.dispatchEvent(new CustomEvent('render_viewer'));
+                        this.animationRequestId = requestAnimationFrame(updateMixer);
+                    }
+                };
+                if (this.animationRequestId) cancelAnimationFrame(this.animationRequestId);
+                this.animationRequestId = requestAnimationFrame(updateMixer);
+            }
+        }
         this.shadingModel.SetShadingType (shadingType);
 
         this.Render ();
@@ -518,6 +574,10 @@ export class Viewer
     Clear ()
     {
         this.mainModel.Clear ();
+        this.mixer = null;
+        this.animationMixers = [];
+        if (this.animationRequestId) cancelAnimationFrame(this.animationRequestId);
+        this.animationRequestId = null;
         this.extraModel.Clear ();
         this.Render ();
     }

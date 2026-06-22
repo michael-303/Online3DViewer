@@ -16,6 +16,8 @@ import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
 import { VRMLLoader } from 'three/examples/jsm/loaders/VRMLLoader.js';
 import { ThreeMFLoader } from 'three/examples/jsm/loaders/3MFLoader.js';
 import { AMFLoader } from 'three/examples/jsm/loaders/AMFLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 export class ImporterThreeBase extends ImporterBase
 {
@@ -142,6 +144,9 @@ export class ImporterThreeBase extends ImporterBase
         }
 
         let mainObject = this.GetMainObject (loadedObject);
+        if (mainObject.animations) {
+            this.model.animations = mainObject.animations;
+        }
         let rootNode = this.model.GetRootNode ();
         rootNode.SetTransformation (GetObjectTransformation (mainObject));
         for (let childObject of mainObject.children) {
@@ -439,5 +444,41 @@ export class ImporterThreeAmf extends ImporterThreeBase
     GetMainObject (loadedObject)
     {
         return loadedObject;
+    }
+}
+
+export class ImporterThreeGltf extends ImporterThreeBase
+{
+    constructor ()
+    {
+        super ();
+    }
+
+    CanImportExtension (extension)
+    {
+        return extension === 'gltf' || extension === 'glb';
+    }
+
+    GetUpDirection ()
+    {
+        return Direction.Y;
+    }
+
+    CreateLoader (manager)
+    {
+        const loader = new GLTFLoader(manager);
+        const dracoLoader = new DRACOLoader(manager);
+        dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/draco3d@1.5.7/');
+        loader.setDRACOLoader(dracoLoader);
+        return loader;
+    }
+
+    GetMainObject (loadedObject)
+    {
+        if (loadedObject.animations && loadedObject.animations.length > 0) {
+            // Save the original animations to the main object
+            loadedObject.scene.animations = loadedObject.animations;
+        }
+        return loadedObject.scene;
     }
 }

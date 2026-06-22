@@ -4,7 +4,7 @@ import { RGBColor } from '../model/color.js';
 import { ImporterFile, ImporterFileList } from './importerfiles.js';
 import { Importer3dm } from './importer3dm.js';
 import { Importer3ds } from './importer3ds.js';
-import { ImporterGltf } from './importergltf.js';
+
 import { ImporterIfc } from './importerifc.js';
 import { ImporterObj } from './importerobj.js';
 import { ImporterOff } from './importeroff.js';
@@ -12,7 +12,7 @@ import { ImporterPly } from './importerply.js';
 import { ImporterOcct } from './importerocct.js';
 import { ImporterStl } from './importerstl.js';
 import { ImporterBim } from './importerbim.js';
-import { ImporterThreeAmf, ImporterThree3mf, ImporterThreeDae, ImporterThreeFbx, ImporterThreeWrl } from './importerthree.js';
+import { ImporterThreeAmf, ImporterThree3mf, ImporterThreeDae, ImporterThreeFbx, ImporterThreeWrl, ImporterThreeGltf } from './importerthree.js';
 import { ImporterFcstd } from './importerfcstd.js';
 
 import * as fflate from 'fflate';
@@ -86,7 +86,7 @@ export class Importer
             new ImporterOff (),
             new ImporterPly (),
             new Importer3ds (),
-            new ImporterGltf (),
+            new ImporterThreeGltf (),
             new ImporterBim (),
             new Importer3dm (),
             new ImporterIfc (),

@@ -244,6 +244,55 @@ export class Website
         });
     }
 
+
+    InitAnimationSlider() {
+        if (!this.animationSliderContainer) {
+            this.animationSliderContainer = document.createElement('div');
+            this.animationSliderContainer.style.position = 'absolute';
+            this.animationSliderContainer.style.bottom = '20px';
+            this.animationSliderContainer.style.left = '50%';
+            this.animationSliderContainer.style.transform = 'translateX(-50%)';
+            this.animationSliderContainer.style.width = '50%';
+            this.animationSliderContainer.style.background = 'rgba(0, 0, 0, 0.5)';
+            this.animationSliderContainer.style.padding = '10px';
+            this.animationSliderContainer.style.borderRadius = '5px';
+            this.animationSliderContainer.style.display = 'flex';
+            this.animationSliderContainer.style.alignItems = 'center';
+            this.animationSliderContainer.style.zIndex = '100';
+
+            this.animationSlider = document.createElement('input');
+            this.animationSlider.type = 'range';
+            this.animationSlider.min = '0';
+            this.animationSlider.max = '100';
+            this.animationSlider.value = '0';
+            this.animationSlider.style.width = '100%';
+
+            this.animationSlider.addEventListener('input', (e) => {
+                let duration = this.viewer.GetAnimationDuration();
+                let time = (e.target.value / 100) * duration;
+                this.viewer.SetAnimationTime(time);
+                // Pause animation while scrubbing
+                this.viewer.PauseAnimation();
+                this.animationToggleBtn.SetSelected(false);
+            });
+
+            this.animationSliderContainer.appendChild(this.animationSlider);
+            this.parameters.viewerDiv.appendChild(this.animationSliderContainer);
+
+            // Update slider on render
+            window.addEventListener('render_viewer', () => {
+                if (this.animationSliderContainer.style.display !== 'none' && this.animationToggleBtn.IsSelected()) {
+                    let duration = this.viewer.GetAnimationDuration();
+                    if (duration > 0) {
+                        let time = this.viewer.GetAnimationTime();
+                        this.animationSlider.value = (time / duration) * 100;
+                    }
+                }
+            });
+        }
+        this.animationSliderContainer.style.display = 'flex';
+    }
+
     HasLoadedModel ()
     {
         return this.model !== null;
@@ -308,6 +357,15 @@ export class Website
         this.navigator.FillTree (importResult);
         this.sidebar.UpdateControlsVisibility ();
         this.FitModelToWindow (true);
+
+        if (this.viewer.GetAnimationDuration() > 0) {
+            this.animationToggleBtn.buttonDiv.style.display = '';
+            this.animationToggleBtn.SetSelected(true);
+            this.InitAnimationSlider();
+        } else {
+            this.animationToggleBtn.buttonDiv.style.display = 'none';
+            if (this.animationSliderContainer) this.animationSliderContainer.style.display = 'none';
+        }
     }
 
     OnModelClicked (button, mouseCoordinates)
@@ -813,6 +871,16 @@ export class Website
         this.cameraSwitchButton.AddClass ('only_on_model');
         this.cameraResetButton.AddClass ('only_full_width');
         this.cameraResetButton.AddClass ('only_on_model');
+
+        this.animationToggleBtn = AddPushButton (this.toolbar, 'play', Loc ('Play / Pause Animation'), ['only_full_width', 'only_on_model'], (isSelected) => {
+            if (isSelected) {
+                this.viewer.PlayAnimation();
+                // this.animationToggleBtn.SetImage('pause'); // If we have a pause icon, else we just rely on PushButton selection state
+            } else {
+                this.viewer.PauseAnimation();
+            }
+        });
+        this.animationToggleBtn.buttonDiv.style.display = 'none'; // Hidden by default
 
         AddButton (this.toolbar, 'snapshot', Loc ('Create snapshot'), ['only_full_width', 'only_on_model'], () => {
             ShowSnapshotDialog (this.viewer);
