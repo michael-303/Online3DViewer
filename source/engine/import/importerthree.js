@@ -6,6 +6,8 @@ import { Base64DataURIToArrayBuffer, CreateObjectUrl, GetFileExtensionFromMimeTy
 import { GetFileExtension, GetFileName } from '../io/fileutils.js';
 import { PhongMaterial, TextureMap } from '../model/material.js';
 import { Node } from '../model/node.js';
+import { Camera } from '../viewer/camera.js';
+import { Coord3D } from '../geometry/coord3d.js';
 import { ConvertThreeColorToColor, ConvertThreeGeometryToMesh, ThreeSRGBToLinearColorConverter } from '../threejs/threeutils.js';
 import { ImporterBase } from './importerbase.js';
 
@@ -127,14 +129,41 @@ export class ImporterThreeBase extends ImporterBase
         function AddObject (importer, model, threeObject, parentNode)
         {
             let node = new Node ();
-            if (threeObject.name !== undefined) {
+            if (threeObject.name) {
                 node.SetName (threeObject.name);
+            } else {
+                // GLTFLoader uses uuid as fallback for animation tracks. We must keep it to preserve animation bindings.
+                threeObject.name = threeObject.uuid;
+                node.SetName (threeObject.uuid);
             }
             node.SetTransformation (GetObjectTransformation (threeObject));
             parentNode.AddChildNode (node);
 
             for (let childObject of threeObject.children) {
                 AddObject (importer, model, childObject, node);
+            }
+            if (threeObject.isPerspectiveCamera) {
+                let eye = new Coord3D (0.0, 0.0, 0.0);
+                let target = new Coord3D (0.0, 0.0, -1.0);
+                let up = new Coord3D (0.0, 1.0, 0.0);
+
+                let transform = node.GetWorldTransformation ();
+                let transformedEye = transform.TransformCoord3D (eye);
+                let transformedTarget = transform.TransformCoord3D (target);
+                let transformedUpPoint = transform.TransformCoord3D (up);
+                let transformedUp = new Coord3D (
+                    transformedUpPoint.x - transformedEye.x,
+                    transformedUpPoint.y - transformedEye.y,
+                    transformedUpPoint.z - transformedEye.z
+                );
+
+                let modelCamera = new Camera (
+                    transformedEye,
+                    transformedTarget,
+                    transformedUp.Normalize (),
+                    threeObject.fov
+                );
+                model.AddCamera (modelCamera);
             }
             if (threeObject.isMesh && importer.IsMeshVisible (threeObject)) {
                 let mesh = importer.ConvertThreeMesh (threeObject);
@@ -147,6 +176,7 @@ export class ImporterThreeBase extends ImporterBase
         if (mainObject.animations) {
             this.model.animations = mainObject.animations;
         }
+
         let rootNode = this.model.GetRootNode ();
         rootNode.SetTransformation (GetObjectTransformation (mainObject));
         for (let childObject of mainObject.children) {

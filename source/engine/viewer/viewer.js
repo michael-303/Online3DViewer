@@ -208,6 +208,8 @@ export class Viewer
 
         this.InitNavigation ();
         this.InitShading ();
+
+        this.Render ();
     }
 
     PlayAnimation () {
