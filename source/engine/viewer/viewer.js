@@ -552,12 +552,16 @@ export class Viewer
             if (typeof window !== 'undefined') {
                 // Create a loop to update mixer
                 const updateMixer = () => {
-                    if (this.mixer) {
+                    if (this.mixer && this.mixer.timeScale > 0) {
+                        // Only auto-update if timescale > 0 (playing)
                         this.mixer.update(this.clock.getDelta());
-                        window.dispatchEvent(new CustomEvent('render_viewer'));
                         this.Render();
-                        this.animationRequestId = requestAnimationFrame(updateMixer);
+                    } else if (this.mixer && this.mixer.timeScale === 0) {
+                        // When paused or scrubbing, ensure we keep clock delta clean
+                        // so it doesn't jump when unpaused
+                        this.clock.getDelta();
                     }
+                    this.animationRequestId = requestAnimationFrame(updateMixer);
                 };
                 if (this.animationRequestId) cancelAnimationFrame(this.animationRequestId);
                 this.animationRequestId = requestAnimationFrame(updateMixer);

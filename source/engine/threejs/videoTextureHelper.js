@@ -139,16 +139,7 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
 
             let videoTexture = new THREE.VideoTexture(video);
             videoTexture.colorSpace = THREE.SRGBColorSpace;
-
-            // WebGL coordinate system has origin at bottom-left, but video starts at top-left.
-            // When applying video textures to standard Three.js geometries, we usually need flipY = true.
-            // GLTFLoader typically configures image textures correctly, but we are constructing
-            // the video texture manually here and need to ensure it's oriented right-side-up and mirrored correctly.
-            videoTexture.flipY = true;
-
-            // To fix left-right mirroring mapping issues
-            videoTexture.repeat.x = -1;
-            videoTexture.wrapS = THREE.RepeatWrapping;
+            videoTexture.flipY = false;
 
             // inherit properties from original material map if exists
             let origMap = null;
@@ -158,25 +149,32 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
             if (origMap) {
                 videoTexture.wrapS = origMap.wrapS;
                 videoTexture.wrapT = origMap.wrapT;
-
-                // Only copy repeat if it's not the default (1,1), otherwise keep our applied fix
-                if (origMap.repeat.x !== 1 || origMap.repeat.y !== 1) {
-                    videoTexture.repeat.copy(origMap.repeat);
-                }
-
+                videoTexture.repeat.copy(origMap.repeat);
                 videoTexture.offset.copy(origMap.offset);
                 videoTexture.rotation = origMap.rotation;
                 videoTexture.center.copy(origMap.center);
-
-                // Don't override flipY from origMap, as GLTFLoader often sets flipY=false for standard maps
-                // but video textures fundamentally differ in WebGL. We force flipY=true.
-                // videoTexture.flipY = origMap.flipY;
-
+                videoTexture.flipY = origMap.flipY;
                 videoTexture.minFilter = origMap.minFilter;
                 videoTexture.magFilter = origMap.magFilter;
                 videoTexture.generateMipmaps = origMap.generateMipmaps;
-
             }
+
+            // Fix specifically for GLTF Video Textures on custom engines
+            // WebGL coordinate system differs from Video coordinate system.
+            // When flipY fails or causes issues, directly manipulating the matrix/offset fixes it.
+            // We want to flip it horizontally and vertically.
+            videoTexture.matrixAutoUpdate = false;
+
+            // To flip X: repeat.x * -1, offset.x = 1
+            // To flip Y: repeat.y * -1, offset.y = 1
+            let rx = videoTexture.repeat.x;
+            let ry = videoTexture.repeat.y;
+
+            videoTexture.repeat.set(-rx, -ry);
+            // Combine with existing offset if any, but add the flip offset
+            videoTexture.offset.set(videoTexture.offset.x + 1, videoTexture.offset.y + 1);
+
+            videoTexture.updateMatrix();
 
             let frameUpdateId = null;
 
