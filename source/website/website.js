@@ -245,7 +245,7 @@ export class Website
     }
 
 
-    InitAnimationSlider() {
+InitAnimationSlider() {
         if (!this.animationSliderContainer) {
             this.animationSliderContainer = document.createElement('div');
             this.animationSliderContainer.style.position = 'absolute';
@@ -267,6 +267,14 @@ export class Website
             this.animationSlider.value = '0';
             this.animationSlider.style.width = '100%';
 
+            let isDragging = false;
+
+            this.animationSlider.addEventListener('mousedown', () => { isDragging = true; });
+            this.animationSlider.addEventListener('touchstart', () => { isDragging = true; });
+
+            this.animationSlider.addEventListener('mouseup', () => { isDragging = false; });
+            this.animationSlider.addEventListener('touchend', () => { isDragging = false; });
+
             this.animationSlider.addEventListener('input', (e) => {
                 let duration = this.viewer.GetAnimationDuration();
                 let time = (e.target.value / 100) * duration;
@@ -281,7 +289,7 @@ export class Website
 
             // Update slider on render
             window.addEventListener('render_viewer', () => {
-                if (this.animationSliderContainer.style.display !== 'none' && this.animationToggleBtn.IsSelected()) {
+                if (this.animationSliderContainer.style.display !== 'none' && this.animationToggleBtn.IsSelected() && !isDragging) {
                     let duration = this.viewer.GetAnimationDuration();
                     if (duration > 0) {
                         let time = this.viewer.GetAnimationTime();
@@ -872,7 +880,7 @@ export class Website
         this.cameraResetButton.AddClass ('only_full_width');
         this.cameraResetButton.AddClass ('only_on_model');
 
-        this.animationToggleBtn = AddPushButton (this.toolbar, 'play', Loc ('Play / Pause Animation'), ['only_full_width', 'only_on_model'], (isSelected) => {
+        this.animationToggleBtn = AddPushButton (this.toolbar, 'details', Loc ('Play / Pause Animation'), ['only_full_width', 'only_on_model'], (isSelected) => {
             if (isSelected) {
                 this.viewer.PlayAnimation();
                 // this.animationToggleBtn.SetImage('pause'); // If we have a pause icon, else we just rely on PushButton selection state
