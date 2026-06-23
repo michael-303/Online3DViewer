@@ -227,7 +227,12 @@ export class Viewer
 
     SetAnimationTime (time) {
         if (this.mixer) {
+            // AnimationMixer's setTime ignores timescale = 0 in older ThreeJS versions
+            // and acts strangely in newer ones. Easiest way to scrub while paused:
+            let wasPaused = this.mixer.timeScale === 0;
+            if (wasPaused) this.mixer.timeScale = 1;
             this.mixer.setTime(time);
+            if (wasPaused) this.mixer.timeScale = 0;
             this.Render();
         }
     }
@@ -546,7 +551,10 @@ export class Viewer
         if (object.animations && object.animations.length > 0) {
             this.mixer = new THREE.AnimationMixer(object);
             for (let clip of object.animations) {
-                this.mixer.clipAction(clip).play();
+                let action = this.mixer.clipAction(clip);
+                action.setLoop(THREE.LoopRepeat);
+                action.clampWhenFinished = false;
+                action.play();
             }
             this.animationMixers.push(this.mixer);
             if (typeof window !== 'undefined') {
