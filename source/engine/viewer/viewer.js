@@ -555,6 +555,7 @@ export class Viewer
                     if (this.mixer) {
                         this.mixer.update(this.clock.getDelta());
                         window.dispatchEvent(new CustomEvent('render_viewer'));
+                        this.Render();
                         this.animationRequestId = requestAnimationFrame(updateMixer);
                     }
                 };

@@ -139,7 +139,16 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
 
             let videoTexture = new THREE.VideoTexture(video);
             videoTexture.colorSpace = THREE.SRGBColorSpace;
-            videoTexture.flipY = false;
+
+            // WebGL coordinate system has origin at bottom-left, but video starts at top-left.
+            // When applying video textures to standard Three.js geometries, we usually need flipY = true.
+            // GLTFLoader typically configures image textures correctly, but we are constructing
+            // the video texture manually here and need to ensure it's oriented right-side-up and mirrored correctly.
+            videoTexture.flipY = true;
+
+            // To fix left-right mirroring mapping issues
+            videoTexture.repeat.x = -1;
+            videoTexture.wrapS = THREE.RepeatWrapping;
 
             // inherit properties from original material map if exists
             let origMap = null;
@@ -149,11 +158,20 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
             if (origMap) {
                 videoTexture.wrapS = origMap.wrapS;
                 videoTexture.wrapT = origMap.wrapT;
-                videoTexture.repeat.copy(origMap.repeat);
+
+                // Only copy repeat if it's not the default (1,1), otherwise keep our applied fix
+                if (origMap.repeat.x !== 1 || origMap.repeat.y !== 1) {
+                    videoTexture.repeat.copy(origMap.repeat);
+                }
+
                 videoTexture.offset.copy(origMap.offset);
                 videoTexture.rotation = origMap.rotation;
                 videoTexture.center.copy(origMap.center);
-                videoTexture.flipY = origMap.flipY;
+
+                // Don't override flipY from origMap, as GLTFLoader often sets flipY=false for standard maps
+                // but video textures fundamentally differ in WebGL. We force flipY=true.
+                // videoTexture.flipY = origMap.flipY;
+
                 videoTexture.minFilter = origMap.minFilter;
                 videoTexture.magFilter = origMap.magFilter;
                 videoTexture.generateMipmaps = origMap.generateMipmaps;

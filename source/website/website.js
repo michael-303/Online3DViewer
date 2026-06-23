@@ -245,62 +245,6 @@ export class Website
     }
 
 
-InitAnimationSlider() {
-        if (!this.animationSliderContainer) {
-            this.animationSliderContainer = document.createElement('div');
-            this.animationSliderContainer.style.position = 'absolute';
-            this.animationSliderContainer.style.bottom = '20px';
-            this.animationSliderContainer.style.left = '50%';
-            this.animationSliderContainer.style.transform = 'translateX(-50%)';
-            this.animationSliderContainer.style.width = '50%';
-            this.animationSliderContainer.style.background = 'rgba(0, 0, 0, 0.5)';
-            this.animationSliderContainer.style.padding = '10px';
-            this.animationSliderContainer.style.borderRadius = '5px';
-            this.animationSliderContainer.style.display = 'flex';
-            this.animationSliderContainer.style.alignItems = 'center';
-            this.animationSliderContainer.style.zIndex = '100';
-
-            this.animationSlider = document.createElement('input');
-            this.animationSlider.type = 'range';
-            this.animationSlider.min = '0';
-            this.animationSlider.max = '100';
-            this.animationSlider.value = '0';
-            this.animationSlider.style.width = '100%';
-
-            let isDragging = false;
-
-            this.animationSlider.addEventListener('mousedown', () => { isDragging = true; });
-            this.animationSlider.addEventListener('touchstart', () => { isDragging = true; });
-
-            this.animationSlider.addEventListener('mouseup', () => { isDragging = false; });
-            this.animationSlider.addEventListener('touchend', () => { isDragging = false; });
-
-            this.animationSlider.addEventListener('input', (e) => {
-                let duration = this.viewer.GetAnimationDuration();
-                let time = (e.target.value / 100) * duration;
-                this.viewer.SetAnimationTime(time);
-                // Pause animation while scrubbing
-                this.viewer.PauseAnimation();
-                this.animationToggleBtn.SetSelected(false);
-            });
-
-            this.animationSliderContainer.appendChild(this.animationSlider);
-            this.parameters.viewerDiv.appendChild(this.animationSliderContainer);
-
-            // Update slider on render
-            window.addEventListener('render_viewer', () => {
-                if (this.animationSliderContainer.style.display !== 'none' && this.animationToggleBtn.IsSelected() && !isDragging) {
-                    let duration = this.viewer.GetAnimationDuration();
-                    if (duration > 0) {
-                        let time = this.viewer.GetAnimationTime();
-                        this.animationSlider.value = (time / duration) * 100;
-                    }
-                }
-            });
-        }
-        this.animationSliderContainer.style.display = 'flex';
-    }
-
     HasLoadedModel ()
     {
         return this.model !== null;
@@ -369,7 +313,7 @@ InitAnimationSlider() {
         if (this.viewer.GetAnimationDuration() > 0) {
             this.animationToggleBtn.buttonDiv.style.display = '';
             this.animationToggleBtn.SetSelected(true);
-            this.InitAnimationSlider();
+            if (this.animationSliderContainer) this.animationSliderContainer.style.display = 'flex';
         } else {
             this.animationToggleBtn.buttonDiv.style.display = 'none';
             if (this.animationSliderContainer) this.animationSliderContainer.style.display = 'none';
@@ -889,6 +833,79 @@ InitAnimationSlider() {
             }
         });
         this.animationToggleBtn.buttonDiv.style.display = 'none'; // Hidden by default
+
+        // Add slider to toolbar directly
+        this.animationSliderContainer = document.createElement('div');
+        this.animationSliderContainer.className = 'ov_toolbar_slider';
+        this.animationSliderContainer.style.display = 'none';
+        this.animationSliderContainer.style.alignItems = 'center';
+        this.animationSliderContainer.style.padding = '0 10px';
+        this.animationSliderContainer.style.width = '150px';
+
+        this.animationSlider = document.createElement('input');
+        this.animationSlider.type = 'range';
+        this.animationSlider.min = '0';
+        this.animationSlider.max = '100';
+        this.animationSlider.value = '0';
+        this.animationSlider.style.width = '100%';
+        this.animationSlider.style.cursor = 'pointer';
+
+        let wasPlaying = false;
+        let isDragging = false;
+
+        this.animationSlider.addEventListener('mousedown', () => {
+            isDragging = true;
+            wasPlaying = this.animationToggleBtn.IsSelected();
+            if (wasPlaying) {
+                this.viewer.PauseAnimation();
+                this.animationToggleBtn.SetSelected(false);
+            }
+        });
+        this.animationSlider.addEventListener('touchstart', () => {
+            isDragging = true;
+            wasPlaying = this.animationToggleBtn.IsSelected();
+            if (wasPlaying) {
+                this.viewer.PauseAnimation();
+                this.animationToggleBtn.SetSelected(false);
+            }
+        });
+
+        let onDragEnd = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            if (wasPlaying) {
+                this.viewer.PlayAnimation();
+                this.animationToggleBtn.SetSelected(true);
+            }
+        };
+        this.animationSlider.addEventListener('mouseup', onDragEnd);
+        this.animationSlider.addEventListener('touchend', onDragEnd);
+
+        this.animationSlider.addEventListener('input', (e) => {
+            let duration = this.viewer.GetAnimationDuration();
+            if (duration > 0) {
+                let time = (e.target.value / 100) * duration;
+                this.viewer.SetAnimationTime(time);
+            }
+        });
+
+        this.animationSliderContainer.appendChild(this.animationSlider);
+        this.toolbar.mainDiv.appendChild(this.animationSliderContainer);
+
+        // Make sure it hides and shows as an only_on_model element
+        this.animationSliderContainer.classList.add('only_full_width');
+        this.animationSliderContainer.classList.add('only_on_model');
+
+        // Update slider on render
+        window.addEventListener('render_viewer', () => {
+            if (this.animationSliderContainer.style.display !== 'none' && this.animationToggleBtn.IsSelected() && !isDragging) {
+                let duration = this.viewer.GetAnimationDuration();
+                if (duration > 0) {
+                    let time = this.viewer.GetAnimationTime();
+                    this.animationSlider.value = (time / duration) * 100;
+                }
+            }
+        });
 
         AddButton (this.toolbar, 'snapshot', Loc ('Create snapshot'), ['only_full_width', 'only_on_model'], () => {
             ShowSnapshotDialog (this.viewer);
