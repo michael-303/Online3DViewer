@@ -157,15 +157,24 @@ export function ApplyVideoTextures (threeObject, importer, objectUrls) {
                 videoTexture.minFilter = origMap.minFilter;
                 videoTexture.magFilter = origMap.magFilter;
                 videoTexture.generateMipmaps = origMap.generateMipmaps;
-
-                // Fix for mirrored video: flip horizontally by making repeat.x negative
-                // and ensuring wrapping allows repetition.
-                videoTexture.wrapS = THREE.RepeatWrapping;
-                videoTexture.repeat.x *= -1;
-            } else {
-                videoTexture.wrapS = THREE.RepeatWrapping;
-                videoTexture.repeat.x = -1;
             }
+
+            // Fix specifically for GLTF Video Textures on custom engines
+            // WebGL coordinate system differs from Video coordinate system.
+            // When flipY fails or causes issues, directly manipulating the matrix/offset fixes it.
+            // We want to flip it horizontally and vertically.
+            videoTexture.matrixAutoUpdate = false;
+
+            // To flip X: repeat.x * -1, offset.x = 1
+            // To flip Y: repeat.y * -1, offset.y = 1
+            let rx = videoTexture.repeat.x;
+            let ry = videoTexture.repeat.y;
+
+            videoTexture.repeat.set(-rx, -ry);
+            // Combine with existing offset if any, but add the flip offset
+            videoTexture.offset.set(videoTexture.offset.x + 1, videoTexture.offset.y + 1);
+
+            videoTexture.updateMatrix();
 
             let frameUpdateId = null;
 

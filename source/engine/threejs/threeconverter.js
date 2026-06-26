@@ -73,6 +73,7 @@ export class ThreeNodeTree
 	{
 		this.model = model;
 		this.threeNodeItems = [];
+		threeRootNode.name = model.GetRootNode ().GetName ();
 		this.AddNode (model.GetRootNode (), threeRootNode);
 	}
 
@@ -84,6 +85,7 @@ export class ThreeNodeTree
 
 		for (let childNode of node.GetChildNodes ()) {
 			let threeChildNode = new THREE.Object3D ();
+			threeChildNode.name = childNode.GetName ();
 			threeNode.add (threeChildNode);
 			this.AddNode (childNode, threeChildNode);
 		}
@@ -208,6 +210,7 @@ export class ThreeMaterialHandler
 			threeMaterial.userData.source = material.source;
 			this.conversionOutput.defaultMaterials.push (threeMaterial);
 		}
+		threeMaterial.name = material.name;
 
 		return threeMaterial;
 	}
@@ -410,6 +413,8 @@ export function ConvertModelToThreeObject (model, conversionParams, conversionOu
 
 		let threeMesh = new THREE.Mesh (threeGeometry, meshMaterialHandler.meshThreeMaterials);
 		threeMesh.name = mesh.GetName ();
+		// Make sure animations can target the mesh directly if needed
+
 		threeMesh.userData = {
 			originalMeshInstance : meshInstance,
 			originalMaterials : meshMaterialHandler.meshOriginalMaterials,
@@ -508,5 +513,8 @@ export function ConvertModelToThreeObject (model, conversionParams, conversionOu
 	let stateHandler = new ThreeConversionStateHandler (callbacks);
 	let materialHandler = new ThreeMaterialHandler (model, stateHandler, conversionParams, conversionOutput);
 	let threeObject = new THREE.Object3D ();
+	if (model.animations) {
+		threeObject.animations = model.animations;
+	}
 	ConvertNodeHierarchy (threeObject, model, materialHandler, stateHandler);
 }

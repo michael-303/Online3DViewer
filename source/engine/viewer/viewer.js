@@ -169,6 +169,10 @@ export class Viewer
         this.camera = null;
         this.projectionMode = null;
         this.cameraValidator = null;
+        this.mixer = null;
+        this.clock = new THREE.Clock();
+        this.animationMixers = [];
+        this.animationRequestId = null;
         this.shadingModel = null;
         this.navigation = null;
         this.upVector = null;
@@ -206,6 +210,45 @@ export class Viewer
         this.InitShading ();
 
         this.Render ();
+    }
+
+    PlayAnimation () {
+        if (this.mixer) {
+            this.mixer.timeScale = 1;
+            this.clock.getDelta(); // reset clock delta
+        }
+    }
+
+    PauseAnimation () {
+        if (this.mixer) {
+            this.mixer.timeScale = 0;
+        }
+    }
+
+    SetAnimationTime (time) {
+        if (this.mixer) {
+            // AnimationMixer's setTime ignores timescale = 0 in older ThreeJS versions
+            // and acts strangely in newer ones. Easiest way to scrub while paused:
+            let wasPaused = this.mixer.timeScale === 0;
+            if (wasPaused) this.mixer.timeScale = 1;
+            this.mixer.setTime(time);
+            if (wasPaused) this.mixer.timeScale = 0;
+            this.Render();
+        }
+    }
+
+    GetAnimationDuration () {
+        if (this.mixer && this.mixer._actions.length > 0) {
+            return this.mixer._actions[0].getClip().duration;
+        }
+        return 0;
+    }
+
+    GetAnimationTime () {
+        if (this.mixer) {
+            return this.mixer.time;
+        }
+        return 0;
     }
 
     SetMouseClickHandler (onMouseClick)
@@ -504,6 +547,34 @@ export class Viewer
     {
         const shadingType = GetShadingTypeOfObject (object);
         this.mainModel.SetMainObject (object);
+
+        if (object.animations && object.animations.length > 0) {
+            this.mixer = new THREE.AnimationMixer(object);
+            for (let clip of object.animations) {
+                let action = this.mixer.clipAction(clip);
+                action.setLoop(THREE.LoopRepeat);
+                action.clampWhenFinished = false;
+                action.play();
+            }
+            this.animationMixers.push(this.mixer);
+            if (typeof window !== 'undefined') {
+                // Create a loop to update mixer
+                const updateMixer = () => {
+                    if (this.mixer && this.mixer.timeScale > 0) {
+                        // Only auto-update if timescale > 0 (playing)
+                        this.mixer.update(this.clock.getDelta());
+                        this.Render();
+                    } else if (this.mixer && this.mixer.timeScale === 0) {
+                        // When paused or scrubbing, ensure we keep clock delta clean
+                        // so it doesn't jump when unpaused
+                        this.clock.getDelta();
+                    }
+                    this.animationRequestId = requestAnimationFrame(updateMixer);
+                };
+                if (this.animationRequestId) cancelAnimationFrame(this.animationRequestId);
+                this.animationRequestId = requestAnimationFrame(updateMixer);
+            }
+        }
         this.shadingModel.SetShadingType (shadingType);
 
         this.Render ();
@@ -518,6 +589,10 @@ export class Viewer
     Clear ()
     {
         this.mainModel.Clear ();
+        this.mixer = null;
+        this.animationMixers = [];
+        if (this.animationRequestId) cancelAnimationFrame(this.animationRequestId);
+        this.animationRequestId = null;
         this.extraModel.Clear ();
         this.Render ();
     }

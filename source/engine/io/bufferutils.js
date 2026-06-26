@@ -76,7 +76,7 @@ export function GetFileExtensionFromMimeType (mimeType)
 
 export function CreateObjectUrl (content)
 {
-	let blob = new Blob ([content]);
+	let blob = new Blob ([new Uint8Array(content)]);
 	let url = URL.createObjectURL (blob);
 	return url;
 }
